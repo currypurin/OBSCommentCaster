@@ -1,14 +1,26 @@
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
 from fastapi.staticfiles import StaticFiles
-from typing import List, Dict
+from fastapi.responses import FileResponse
+from typing import List, Dict, Optional
 import json
 from datetime import datetime
 import asyncio
+import os
+from dotenv import load_dotenv
+from youtube_utils import YouTubeAPI
+from googleapiclient.discovery import build
+import base64
+import aiohttp
+
+# 環境変数の読み込み
+load_dotenv()
 
 app = FastAPI()
 
 # 静的ファイルのマウント
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/templates", StaticFiles(directory="templates"), name="templates")
+
 
 # WebSocket接続を管理するクラス
 class ConnectionManager:
@@ -20,22 +32,145 @@ class ConnectionManager:
         self.selected_comment = None
         self.comments = []  # 最新のコメントを保持するリスト
 
+        # YouTube API の初期化
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        if not api_key:
+            print("Warning: YOUTUBE_API_KEY not found in environment variables")
+            self.youtube_api = None
+        else:
+            youtube = build('youtube', 'v3', developerKey=api_key)
+            self.youtube_api = YouTubeAPI(youtube)
+            print("YouTube API initialized with API key")
+
+        self.session = None  # aiohttp session for image fetching
+
+    async def start(self):
+        """セッションの初期化"""
+        self.session = aiohttp.ClientSession()
+
+    async def stop(self):
+        """セッションのクリーンアップ"""
+        if self.session:
+            await self.session.close()
+
+    async def fetch_and_encode_image(self, url: str) -> Optional[str]:
+        """画像をフェッチしてBase64エンコードする"""
+        if not url:
+            return None
+        try:
+            async with self.session.get(url) as response:
+                if response.status == 200:
+                    image_data = await response.read()
+                    base64_image = base64.b64encode(image_data).decode('utf-8')
+                    return f"data:image/jpeg;base64,{base64_image}"
+                else:
+                    print(f"画像の取得に失敗: {response.status}")
+                    return None
+        except Exception as e:
+            print(f"画像の取得中にエラー: {e}")
+            return None
+
     async def connect(self, websocket: WebSocket, client_type: str):
         await websocket.accept()
         self.active_connections[client_type].append(websocket)
+        # print(f"New {client_type} connection established. Total {client_type} connections: {len(self.active_connections[client_type])}")
 
     def disconnect(self, websocket: WebSocket, client_type: str):
         self.active_connections[client_type].remove(websocket)
+        # print(f"{client_type} connection closed. Remaining {client_type} connections: {len(self.active_connections[client_type])}")
 
     async def broadcast_to_displays(self, message: str):
+        print(f"Broadcasting to {len(self.active_connections['display'])} display clients")
         for connection in self.active_connections["display"]:
             await connection.send_text(message)
 
     async def broadcast_to_admins(self, message: str):
+        print(f"Broadcasting to {len(self.active_connections['admin'])} admin clients")
         for connection in self.active_connections["admin"]:
             await connection.send_text(message)
 
+    async def fetch_youtube_comments(self):
+        """YouTubeのコメントを定期的に取得"""
+        while True:
+            if self.youtube_api and self.youtube_api.live_chat_id:
+                messages = self.youtube_api.get_live_chat_messages()
+                if messages:  # messagesが存在する場合のみ処理を行う
+                    for message in messages:
+                        # アイコンをBase64エンコード
+                        base64_icon = await self.fetch_and_encode_image(message.get('author_icon'))
+                        message['author_icon'] = base64_icon or 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAgACADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKKACiiigAooooAKKKKAP/2Q=='
+
+                        # 表示用クライアントに送信
+                        await self.broadcast_to_displays(json.dumps({
+                            "type": "chat",
+                            "author": message.get('author', ''),
+                            "text": message.get('text', ''),
+                            "timestamp": message.get('timestamp', ''),
+                            "author_icon": message.get('author_icon', '')
+                        }))
+                        # 管理画面にも送信
+                        await self.broadcast_to_admins(json.dumps({
+                            "type": "new_comment",
+                            "comment": {
+                                "author": message.get('author', ''),
+                                "text": message.get('text', ''),
+                                "timestamp": message.get('timestamp', ''),
+                                "message_id": message.get('message_id', ''),
+                                "author_icon": message.get('author_icon', '')
+                            }
+                        }))
+            await asyncio.sleep(5)  # 5秒待機
+
+
 manager = ConnectionManager()
+
+
+@app.on_event("startup")
+async def startup_event():
+    """サーバー起動時にYouTubeのライブチャットIDを設定"""
+    await manager.start()  # aiohttp sessionの初期化
+    if manager.youtube_api:
+        channel_id = os.getenv("YOUTUBE_CHANNEL_ID")
+        if channel_id:
+            chat_id = manager.youtube_api.get_live_chat_id(channel_id=channel_id)
+            if chat_id:
+                manager.youtube_api.set_live_chat_id(chat_id)
+                # コメント取得タスクを開始
+                asyncio.create_task(manager.fetch_youtube_comments())
+                # print(f"Live chat ID set: {chat_id}")
+            else:
+                # print("No active live chat found")
+                pass
+        else:
+            # print("Warning: YOUTUBE_CHANNEL_ID not found in environment variables")
+            pass
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """サーバー終了時のクリーンアップ"""
+    await manager.stop()  # aiohttp sessionのクリーンアップ
+
+
+@app.get("/api/config")
+async def get_config():
+    """サーバーの設定情報を返す"""
+    return {
+        "server_host": os.getenv("SERVER_HOST", "192.168.11.27")
+    }
+
+
+@app.get("/")
+async def get_overlay():
+    """オーバーレイ用HTMLを返す"""
+    return FileResponse('templates/chat_overlay.html')
+
+
+@app.get("/admin")
+async def get_admin():
+    """管理画面用HTMLを返す"""
+    return FileResponse('templates/admin.html')
+
 
 @app.websocket("/ws/admin")
 async def websocket_admin_endpoint(websocket: WebSocket):
@@ -46,13 +181,13 @@ async def websocket_admin_endpoint(websocket: WebSocket):
             message = json.loads(data)
             if message.get("type") == "select_comment":
                 manager.selected_comment = message.get("comment")
-                # 選択されたコメントを表示画面に送信
                 await manager.broadcast_to_displays(json.dumps({
                     "type": "selected_comment",
                     "comment": manager.selected_comment
                 }))
     except WebSocketDisconnect:
         manager.disconnect(websocket, "admin")
+
 
 @app.websocket("/ws/display")
 async def websocket_display_endpoint(websocket: WebSocket):
@@ -68,16 +203,46 @@ async def websocket_display_endpoint(websocket: WebSocket):
     except WebSocketDisconnect:
         manager.disconnect(websocket, "display")
 
+
+@app.post("/api/youtube/set-live-chat")
+async def set_live_chat(video_id: Optional[str] = None, channel_id: Optional[str] = None):
+    """YouTubeのライブチャットIDを設定"""
+    if not manager.youtube_api:
+        raise HTTPException(status_code=400, detail="YouTube API is not configured")
+
+    if not video_id and not channel_id:
+        channel_id = os.getenv("YOUTUBE_CHANNEL_ID")
+        if not channel_id:
+            raise HTTPException(status_code=400, detail="Neither video_id nor channel_id provided")
+
+    chat_id = manager.youtube_api.get_live_chat_id(channel_id=channel_id, video_id=video_id)
+    if not chat_id:
+        raise HTTPException(status_code=404, detail="Live chat not found")
+
+    manager.youtube_api.set_live_chat_id(chat_id)
+
+    # コメント取得タスクを開始
+    asyncio.create_task(manager.fetch_youtube_comments())
+
+    return {"status": "success", "chat_id": chat_id}
+
+
 # テスト用のダミーコメント追加エンドポイント
 @app.post("/api/add_comment")
 async def add_comment(comment: dict):
-    manager.comments.append({
+    message = {
+        "type": "chat",
+        "author": "テストユーザー",
         "text": comment["text"],
-        "timestamp": datetime.now().isoformat()
-    })
-    # 管理画面に新しいコメントを通知
+        "timestamp": datetime.now().isoformat(),
+        "message_id": f"test_{datetime.now().timestamp()}",  # テスト用のユニークなメッセージID
+        "author_icon": "https://yt3.ggpht.com/ytc/default-avatar.jpg"  # デフォルトのアイコンURL
+    }
+    # 表示用クライアントに送信
+    await manager.broadcast_to_displays(json.dumps(message))
+    # 管理画面にも送信
     await manager.broadcast_to_admins(json.dumps({
         "type": "new_comment",
-        "comment": comment
+        "comment": message
     }))
     return {"status": "success"}
