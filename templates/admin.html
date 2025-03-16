@@ -15,14 +15,6 @@
             margin-bottom: 20px;
         }
         
-        input[type="text"] {
-            width: 100%;
-            padding: 8px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        
         button {
             background-color: #4CAF50;
             color: white;
@@ -104,12 +96,6 @@
 </head>
 <body>
     <h1>コメント管理画面</h1>
-    
-    <div class="input-group">
-        <h2>テストコメントの送信</h2>
-        <input type="text" id="commentInput" placeholder="コメントを入力">
-        <button onclick="sendComment()">送信</button>
-    </div>
 
     <div class="input-group">
         <h2>コメント一覧</h2>
@@ -182,39 +168,6 @@
         // 初期接続
         connectWebSocket();
 
-        async function sendComment() {
-            const commentInput = document.getElementById('commentInput');
-            const comment = commentInput.value;
-            
-            if (!comment) return;
-            
-            try {
-                const response = await fetch('/api/add_comment', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ text: comment }),
-                });
-                
-                if (response.ok) {
-                    commentInput.value = '';
-                    // コメントを一覧に追加
-                    addCommentToList({
-                        author: 'テストユーザー',
-                        text: comment,
-                        timestamp: new Date().toISOString(),
-                        author_icon: 'https://yt3.ggpht.com/ytc/default-avatar.jpg',
-                        message_id: `test_${Date.now()}`
-                    });
-                } else {
-                    console.error('コメントの送信に失敗しました');
-                }
-            } catch (error) {
-                console.error('エラー:', error);
-            }
-        }
-
         function addCommentToList(comment) {
             comments.unshift(comment);  // 新しいコメントを先頭に追加
             updateCommentList();
@@ -284,13 +237,6 @@
             div.textContent = text;
             return div.innerHTML;
         }
-        
-        // Enterキーでも送信できるようにする
-        document.getElementById('commentInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                sendComment();
-            }
-        });
     </script>
 </body>
 </html> 
