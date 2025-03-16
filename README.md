@@ -114,7 +114,10 @@ OBSCommentCaster/
 
 ## ライセンス
 
-MIT License
+GNU General Public License v3.0 (GPL-3.0)
+
+このソフトウェアは自由ソフトウェアです。GNU General Public License v3.0のもとで再配布および改変が可能です。
+詳細は[LICENSE](LICENSE)ファイルを参照してください。
 
 ## 注意事項
 
