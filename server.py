@@ -155,9 +155,7 @@ async def shutdown_event():
 @app.get("/api/config")
 async def get_config():
     """サーバーの設定情報を返す"""
-    return {
-        "server_host": os.getenv("SERVER_HOST", "192.168.11.27")
-    }
+    return {}  # SERVER_HOSTの参照を削除
 
 
 @app.get("/")
