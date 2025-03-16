@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>コメント管理画面</title>
+    <style>
+        body {
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #commentList {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .comment-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            align-items: start;
+            gap: 10px;
+        }
+
+        .comment-item:hover {
+            background-color: #f5f5f5;
+        }
+
+        .comment-item.selected {
+            background-color: #e3f2fd;
+        }
+
+        .author-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .comment-content {
+            flex-grow: 1;
+        }
+
+        .comment-author {
+            font-weight: bold;
+            color: #2196F3;
+        }
+
+        .comment-text {
+            margin-top: 5px;
+        }
+
+        .comment-time {
+            font-size: 0.8em;
+            color: #666;
+        }
+
+        .button-group {
+            margin-top: 10px;
+        }
+
+        .button-group button.secondary {
+            background-color: #666;
+        }
+
+        .button-group button.secondary:hover {
+            background-color: #555;
+        }
+    </style>
+</head>
+<body>
+    <h1>コメント管理画面</h1>
+    
+    <div class="input-group">
+        <h2>テストコメントの送信</h2>
+        <input type="text" id="commentInput" placeholder="コメントを入力">
+        <button onclick="sendComment()">送信</button>
+    </div>
+
+    <div class="input-group">
+        <h2>コメント一覧</h2>
+        <div id="commentList"></div>
+        <div class="button-group">
+            <button onclick="displaySelectedComment()">選択したコメントを表示</button>
+            <button class="secondary" onclick="clearDisplay()">表示を消去</button>
+        </div>
+    </div>
+    
+    <div class="input-group">
+        <h2>オーバーレイの表示</h2>
+        <p>以下のURLをOBSのブラウザソースとして追加してください：</p>
+        <code id="overlayUrl">http://localhost:8000/</code>
+    </div>
+
+    <script>
+        let comments = [];
+        let selectedComment = null;
+        let ws = null;
+
+        // サーバーのホストアドレスを取得
+        async function getServerHost() {
+            try {
+                const response = await fetch('/api/config');
+                const config = await response.json();
+                return config.server_host;
+            } catch (error) {
+                console.error('設定の取得に失敗しました:', error);
+                return 'localhost';
+            }
+        }
+
+        // WebSocket接続を確立
+        async function connectWebSocket() {
+            try {
+                const serverHost = await getServerHost();
+                console.log('Connecting to WebSocket server at:', serverHost);
+                ws = new WebSocket(`ws://${serverHost}:8000/ws/admin`);
+                
+                // オーバーレイURLを更新
+                document.getElementById('overlayUrl').textContent = `http://${serverHost}:8000/`;
+                
+                ws.onopen = function() {
+                    console.log('WebSocket connection established');
+                };
+                
+                ws.onmessage = function(event) {
+                    console.log('Received message:', event.data);
+                    const message = JSON.parse(event.data);
+                    if (message.type === 'new_comment') {
+                        addCommentToList(message.comment);
+                    }
+                };
+                
+                ws.onclose = function() {
+                    console.log('接続が切断されました。再接続を試みます...');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket エラー:', error);
+                };
+            } catch (error) {
+                console.error('WebSocket connection error:', error);
+                setTimeout(connectWebSocket, 5000);
+            }
+        }
+        
+        // 初期接続
+        connectWebSocket();
+
+        async function sendComment() {
+            const commentInput = document.getElementById('commentInput');
+            const comment = commentInput.value;
+            
+            if (!comment) return;
+            
+            try {
+                const response = await fetch('/api/add_comment', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: comment }),
+                });
+                
+                if (response.ok) {
+                    commentInput.value = '';
+                    // コメントを一覧に追加
+                    addCommentToList({
+                        author: 'テストユーザー',
+                        text: comment,
+                        timestamp: new Date().toISOString(),
+                        author_icon: 'https://yt3.ggpht.com/ytc/default-avatar.jpg',
+                        message_id: `test_${Date.now()}`
+                    });
+                } else {
+                    console.error('コメントの送信に失敗しました');
+                }
+            } catch (error) {
+                console.error('エラー:', error);
+            }
+        }
+
+        function addCommentToList(comment) {
+            comments.unshift(comment);  // 新しいコメントを先頭に追加
+            updateCommentList();
+        }
+
+        function updateCommentList() {
+            const commentList = document.getElementById('commentList');
+            commentList.innerHTML = comments.map((comment, index) => {
+                const iconUrl = (comment.author_icon || 'https://yt3.ggpht.com/ytc/default-avatar.jpg').replace(/\s+/g, '');
+                return `
+                    <div class="comment-item ${selectedComment === index ? 'selected' : ''}" 
+                         onclick="selectComment(${index})" 
+                         ondblclick="editComment(${index})">
+                        <img class="author-icon" src="${escapeHtml(iconUrl)}" 
+                             onerror="this.src='https://yt3.ggpht.com/ytc/default-avatar.jpg'" 
+                             alt="${escapeHtml(comment.author)}">
+                        <div class="comment-content">
+                            <div class="comment-author">${escapeHtml(comment.author)}</div>
+                            <div class="comment-text">${escapeHtml(comment.text)}</div>
+                            <div class="comment-time">${new Date(comment.timestamp).toLocaleString()}</div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectComment(index) {
+            selectedComment = index;
+            updateCommentList();
+        }
+
+        function editComment(index) {
+            const comment = comments[index];
+            const newText = prompt("コメントを編集してください:", comment.text);
+            if (newText !== null) {
+                comment.text = newText; // コメントを更新
+                updateCommentList(); // コメントリストを更新
+                // サーバーに更新を送信
+                ws.send(JSON.stringify({
+                    type: 'edit_comment',
+                    comment: comment
+                }));
+            }
+        }
+
+        function displaySelectedComment() {
+            if (selectedComment === null || !ws) return;
+            
+            const comment = comments[selectedComment];
+            ws.send(JSON.stringify({
+                type: 'select_comment',
+                comment: comment
+            }));
+        }
+
+        function clearDisplay() {
+            if (!ws) return;
+            
+            ws.send(JSON.stringify({
+                type: 'select_comment',
+                comment: null
+            }));
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Enterキーでも送信できるようにする
+        document.getElementById('commentInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendComment();
+            }
+        });
+    </script>
+</body>
+</html> 

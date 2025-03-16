@@ -25,4 +25,9 @@ build/
 .env.local
 
 # Logs
-*.log 
+*.log
+
+# OAuth and API credentials
+token.pickle
+client_secret*.json
+credentials*.json 
