@@ -44,21 +44,12 @@ cp .env.example .env
 
 ### サーバーの起動
 ```bash
-uvicorn server:app --reload --host 0.0.0.0 --port 8000
+python run.py
 ```
+サーバー起動時に環境変数の設定状態が確認できます。
 
 ### サーバーの停止
-1. 実行中のサーバープロセスの確認:
-```bash
-lsof -i :8000 | grep LISTEN
-```
-
-2. サーバープロセスの停止:
-```bash
-pkill -f "uvicorn server:app"
-```
-
-または、サーバーを実行しているターミナルで `Ctrl+C` を押してサーバーを停止することもできます。
+サーバーを実行しているターミナルで `Ctrl+C` を押してサーバーを停止することができます。
 
 ## 使用方法
 
@@ -100,6 +91,8 @@ OBSCommentCaster/
 ├── requirements.txt
 ├── server.py
 ├── youtube_utils.py
+├── config.py
+├── run.py
 ├── .env.example
 └── templates/
     ├── admin.html
@@ -111,6 +104,13 @@ OBSCommentCaster/
 - フロントエンド: HTML/CSS/JavaScript
 - 通信: WebSocket
 - OBS連携: ブラウザソース
+
+### 設定ファイル
+
+`config.py`で以下の設定を変更できます：
+- メッセージ取得間隔（秒）
+- 処理済みメッセージの最大保持数
+- デフォルトのプロフィール画像URL
 
 ## ライセンス
 
