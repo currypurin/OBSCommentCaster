@@ -59,7 +59,7 @@
         .author-icon {
             width: 40px;
             height: 40px;
-            border-radius: 50%;
+            border-radius: 4px;
             flex-shrink: 0;
         }
 
@@ -119,14 +119,7 @@
 
         // サーバーのホストアドレスを取得
         async function getServerHost() {
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                return config.server_host;
-            } catch (error) {
-                console.error('設定の取得に失敗しました:', error);
-                return 'localhost';
-            }
+            return window.location.hostname;
         }
 
         // WebSocket接続を確立

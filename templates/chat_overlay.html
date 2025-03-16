@@ -86,61 +86,60 @@
         
         // サーバーのホストアドレスを取得
         async function getServerHost() {
-            try {
-                const response = await fetch('/api/config');
-                const config = await response.json();
-                return config.server_host;
-            } catch (error) {
-                console.error('設定の取得に失敗しました:', error);
-                return 'localhost';
-            }
+            return window.location.hostname;
         }
         
         // WebSocket接続を確立
         async function connectWebSocket() {
-            const serverHost = await getServerHost();
-            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${wsProtocol}//${serverHost}:8000/ws/display`;
-            console.log('WebSocket接続先:', wsUrl);
-            const ws = new WebSocket(wsUrl);
-            
-            ws.onmessage = function(event) {
-                console.log('生のメッセージデータ:', event.data);
-                try {
-                    const message = JSON.parse(event.data);
-                    console.log('パースされたメッセージ:', message);
-                    console.log('メッセージの型:', message.type);
-                    
-                    // 選択されたコメントのみを処理
-                    if (message.type === 'selected_comment') {
-                        console.log('選択されたコメントを表示:', message);
-                        if (message.comment) {
-                            handleSelectedComment(message.comment);
-                        } else {
-                            removeSelectedMessages();
+            try {
+                const serverHost = await getServerHost();
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${wsProtocol}//${serverHost}:8000/ws/display`;
+                console.log('WebSocket接続先:', wsUrl);
+                const ws = new WebSocket(wsUrl);
+                
+                ws.onmessage = function(event) {
+                    console.log('生のメッセージデータ:', event.data);
+                    try {
+                        const message = JSON.parse(event.data);
+                        console.log('パースされたメッセージ:', message);
+                        console.log('メッセージの型:', message.type);
+                        
+                        // 選択されたコメントのみを処理
+                        if (message.type === 'selected_comment') {
+                            console.log('選択されたコメントを表示:', message);
+                            if (message.comment) {
+                                handleSelectedComment(message.comment);
+                            } else {
+                                removeSelectedMessages();
+                            }
                         }
+                        // 通常のチャットメッセージは無視
+                    } catch (error) {
+                        console.error('メッセージの処理中にエラーが発生しました:', error);
+                        console.error('問題のメッセージ:', event.data);
                     }
-                    // 通常のチャットメッセージは無視
-                } catch (error) {
-                    console.error('メッセージの処理中にエラーが発生しました:', error);
-                    console.error('問題のメッセージ:', event.data);
-                }
-            };
-            
-            ws.onopen = function() {
-                console.log('WebSocket接続が確立されました');
-            };
-            
-            ws.onclose = function() {
-                console.log('接続が切断されました。再接続を試みます...');
+                };
+                
+                ws.onopen = function() {
+                    console.log('WebSocket接続が確立されました');
+                };
+                
+                ws.onclose = function() {
+                    console.log('接続が切断されました。再接続を試みます...');
+                    setTimeout(connectWebSocket, 5000);
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('WebSocket エラー:', error);
+                };
+                
+                return ws;
+            } catch (error) {
+                console.error('WebSocket接続エラー:', error);
                 setTimeout(connectWebSocket, 5000);
-            };
-            
-            ws.onerror = function(error) {
-                console.error('WebSocket エラー:', error);
-            };
-            
-            return ws;
+                return null;
+            }
         }
         
         // 初期接続

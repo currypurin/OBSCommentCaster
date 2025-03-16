@@ -15,7 +15,6 @@ class EnvConfig:
     """環境変数から取得する設定"""
     API_KEY: str = getenv('YOUTUBE_API_KEY', '')
     CHANNEL_ID: str = getenv('YOUTUBE_CHANNEL_ID', '')
-    SERVER_HOST: str = getenv('SERVER_HOST', 'localhost')
 
 
 @dataclass
