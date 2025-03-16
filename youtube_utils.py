@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from googleapiclient.errors import HttpError
+from config import app_config
 
 
 class YouTubeAPI:
@@ -76,13 +77,13 @@ class YouTubeAPI:
             return None
 
     def get_live_chat_messages(self) -> List[Dict]:
-        """ライブチャットメッセージを取得（3秒間隔）"""
+        """ライブチャットメッセージを取得"""
         if not self.live_chat_id:
             return []
 
         try:
             time_since_last_request = datetime.now() - self.last_request_time
-            if time_since_last_request < timedelta(seconds=3):
+            if time_since_last_request < timedelta(seconds=app_config.MESSAGE_FETCH_INTERVAL):
                 return []
 
             print("\nDEBUG: ライブチャットメッセージを取得中...")
@@ -130,7 +131,7 @@ class YouTubeAPI:
                         "author": item["authorDetails"]["displayName"],
                         "timestamp": item["snippet"]["publishedAt"],
                         "message_id": message_id,
-                        "author_icon": item["authorDetails"].get("profileImageUrl", "https://yt3.ggpht.com/ytc/default-avatar.jpg")
+                        "author_icon": item["authorDetails"].get("profileImageUrl", app_config.DEFAULT_PROFILE_IMAGE)
                     }
                     messages.append(message)
                     self.processed_message_ids.add(message_id)
@@ -138,8 +139,8 @@ class YouTubeAPI:
                     for key, value in message.items():
                         print(f"    {key}: {value}")
 
-                    if len(self.processed_message_ids) > 1000:
-                        self.processed_message_ids = set(list(self.processed_message_ids)[-1000:])
+                    if len(self.processed_message_ids) > app_config.MAX_PROCESSED_MESSAGES:
+                        self.processed_message_ids = set(list(self.processed_message_ids)[-app_config.MAX_PROCESSED_MESSAGES:])
                 else:
                     print(f"DEBUG: 不正なメッセージ形式: {item}")
 
