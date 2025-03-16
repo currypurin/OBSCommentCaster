@@ -21,9 +21,9 @@ class YouTubeAPI:
             print("クォータ使用量リセット（前回: {}ユニット）".format(self.daily_quota_used))
             self.daily_quota_used = 0
             self.quota_reset_time = now
-        
+
         self.daily_quota_used += units
-        
+
         if self.daily_quota_used % 1000 == 0:
             print(f"現在のクォータ使用量: {self.daily_quota_used}ユニット")
 
@@ -38,19 +38,19 @@ class YouTubeAPI:
                 )
                 response = request.execute()
                 self._update_quota_usage(1)
-                
+
                 if response.get("items"):
                     item = response["items"][0]
                     details = item.get("liveStreamingDetails", {})
                     snippet = item.get("snippet", {})
                     status = item.get("status", {})
-                    
+
                     print("DEBUG: 動画情報:")
                     print(f"  タイトル: {snippet.get('title')}")
                     print(f"  チャンネルID: {snippet.get('channelId')}")
                     print(f"  チャンネル名: {snippet.get('channelTitle')}")
                     print(f"  公開状態: {status.get('privacyStatus')}")
-                    
+
                     return details.get("activeLiveChatId")
 
             if channel_id:
@@ -87,7 +87,7 @@ class YouTubeAPI:
 
             print("\nDEBUG: ライブチャットメッセージを取得中...")
             print(f"DEBUG: チャットID: {self.live_chat_id}")
-            
+
             request = self.youtube.liveChatMessages().list(
                 liveChatId=self.live_chat_id,
                 part="snippet,authorDetails",
@@ -99,7 +99,7 @@ class YouTubeAPI:
             self._update_quota_usage(1)
 
             print(f"DEBUG: APIレスポンス: {response}")
-            
+
             if "items" not in response:
                 print("DEBUG: メッセージが見つかりません")
                 return []
@@ -124,7 +124,7 @@ class YouTubeAPI:
                     print("  Snippet:")
                     for key, value in item["snippet"].items():
                         print(f"    {key}: {value}")
-                    
+
                     message = {
                         "text": item["snippet"]["displayMessage"],
                         "author": item["authorDetails"]["displayName"],
