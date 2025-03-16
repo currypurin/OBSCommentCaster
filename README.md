@@ -1,9 +1,10 @@
 # OBS Comment Caster
 
-OBS配信中に、コメントをリアルタイムで管理し、選択したコメントを配信画面に表示するためのWebアプリケーションです。
+OBS配信中に、YouTubeライブチャットのコメントをリアルタイムで管理し、選択したコメントを配信画面に表示するためのWebアプリケーションです。
 
 ## 機能
 
+- YouTubeライブチャットのリアルタイム取得
 - 管理画面でコメントの一覧表示と選択
 - 選択したコメントをOBS配信画面にリアルタイムで表示
 - WebSocket通信によるリアルタイムな更新
@@ -14,6 +15,7 @@ OBS配信中に、コメントをリアルタイムで管理し、選択した�
 - Python 3.8以上
 - OBS Studio
 - モダンなWebブラウザ（Chrome, Firefox, Safari等）
+- YouTube Data API v3のAPIキー
 
 ## セットアップ
 
@@ -28,28 +30,66 @@ source obs_comment_caster/bin/activate  # Windows: .\obs_comment_caster\Scripts\
 pip install -r requirements.txt
 ```
 
-## 使用方法
+3. 環境変数の設定:
+- `.env.example` を `.env` にコピーし、必要な情報を設定:
+```bash
+cp .env.example .env
+```
+- `.env` ファイルを編集し、以下の項目を設定:
+  - `YOUTUBE_API_KEY`: YouTubeのAPIキー
+  - `YOUTUBE_CHANNEL_ID`: 配信チャンネルのID
+  - `SERVER_HOST`: サーバーのホストアドレス（通常はローカルIPアドレス）
 
-1. サーバーの起動:
+## サーバーの管理
+
+### サーバーの起動
 ```bash
 uvicorn server:app --reload --host 0.0.0.0 --port 8000
 ```
 
-2. 管理画面へのアクセス:
-- ブラウザで http://localhost:8000/static/admin.html を開く
+### サーバーの停止
+1. 実行中のサーバープロセスの確認:
+```bash
+lsof -i :8000 | grep LISTEN
+```
+
+2. サーバープロセスの停止:
+```bash
+pkill -f "uvicorn server:app"
+```
+
+または、サーバーを実行しているターミナルで `Ctrl+C` を押してサーバーを停止することもできます。
+
+## 使用方法
+
+1. 管理画面へのアクセス:
+- ブラウザで `http://localhost:8000/admin` を開く
 - コメントの一覧が表示され、クリックで選択可能
 
-3. OBSでの設定:
+2. OBSでの設定:
 - OBSを起動
 - ソースの追加 → 「ブラウザ」を選択
 - 以下の設定を行う:
-  - URL: `http://localhost:8000/static/display.html`
+  - URL: `http://localhost:8000/`
   - 幅: 1920（または必要なサイズ）
   - 高さ: 1080（または必要なサイズ）
 
-4. 動作確認:
+3. 動作確認:
 - 管理画面でコメントをクリックすると、OBS画面に表示
 - コメントは自動的にフェードイン/アウト
+
+### トラブルシューティング
+
+- 「Address already in use」エラーが表示される場合:
+  1. `lsof -i :8000 | grep LISTEN` で実行中のプロセスを確認
+  2. `pkill -f "uvicorn server:app"` で該当プロセスを停止
+  3. サーバーを再起動
+
+- コメントが表示されない場合:
+  1. `.env`ファイルの設定を確認
+  2. YouTubeチャンネルIDが正しいか確認
+  3. APIキーが有効か確認
+  4. 対象の配信がライブ状態か確認
 
 ## 開発者向け情報
 
@@ -59,15 +99,18 @@ OBSCommentCaster/
 ├── README.md
 ├── requirements.txt
 ├── server.py
-└── static/
+├── youtube_utils.py
+├── .env.example
+└── templates/
     ├── admin.html
-    └── display.html
+    └── chat_overlay.html
 ```
 
 ### 使用技術
-- バックエンド: FastAPI
+- バックエンド: FastAPI, YouTube Data API v3
 - フロントエンド: HTML/CSS/JavaScript
 - 通信: WebSocket
+- OBS連携: ブラウザソース
 
 ## ライセンス
 
@@ -76,4 +119,5 @@ MIT License
 ## 注意事項
 
 - このアプリケーションはローカル環境での使用を想定しています
+- YouTube Data API v3の利用制限に注意してください
 - 本番環境で使用する場合は、適切なセキュリティ対策を実施してください 
