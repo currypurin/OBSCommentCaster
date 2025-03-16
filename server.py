@@ -225,24 +225,3 @@ async def set_live_chat(video_id: Optional[str] = None, channel_id: Optional[str
     asyncio.create_task(manager.fetch_youtube_comments())
 
     return {"status": "success", "chat_id": chat_id}
-
-
-# テスト用のダミーコメント追加エンドポイント
-@app.post("/api/add_comment")
-async def add_comment(comment: dict):
-    message = {
-        "type": "chat",
-        "author": "テストユーザー",
-        "text": comment["text"],
-        "timestamp": datetime.now().isoformat(),
-        "message_id": f"test_{datetime.now().timestamp()}",  # テスト用のユニークなメッセージID
-        "author_icon": "https://yt3.ggpht.com/ytc/default-avatar.jpg"  # デフォルトのアイコンURL
-    }
-    # 表示用クライアントに送信
-    await manager.broadcast_to_displays(json.dumps(message))
-    # 管理画面にも送信
-    await manager.broadcast_to_admins(json.dumps({
-        "type": "new_comment",
-        "comment": message
-    }))
-    return {"status": "success"}
