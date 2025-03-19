@@ -239,8 +239,16 @@
         }
 
         function handleDoubleClick(index) {
-            selectComment(index);
-            displaySelectedComment();
+            if (!ws) return;
+            
+            const comment = comments[index];
+            selectedComment = index;
+            displayedComment = index;
+            ws.send(JSON.stringify({
+                type: 'select_comment',
+                comment: comment
+            }));
+            updateCommentList();
         }
     </script>
 </body>
