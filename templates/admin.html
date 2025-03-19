@@ -173,7 +173,7 @@
                 return `
                     <div class="comment-item ${selectedComment === index ? 'selected' : ''}" 
                          onclick="selectComment(${index})" 
-                         ondblclick="editComment(${index})">
+                         ondblclick="handleDoubleClick(${index})">
                         <img class="author-icon" src="${escapeHtml(iconUrl)}" 
                              onerror="this.src='https://yt3.ggpht.com/ytc/default-avatar.jpg'" 
                              alt="${escapeHtml(comment.author)}">
@@ -229,6 +229,11 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        function handleDoubleClick(index) {
+            selectComment(index);
+            displaySelectedComment();
         }
     </script>
 </body>
