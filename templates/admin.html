@@ -56,6 +56,10 @@
             background-color: #e3f2fd;
         }
 
+        .comment-item.displayed {
+            background-color: #fff3e0;
+        }
+
         .author-icon {
             width: 40px;
             height: 40px;
@@ -115,6 +119,7 @@
     <script>
         let comments = [];
         let selectedComment = null;
+        let displayedComment = null;
         let ws = null;
 
         // サーバーのホストアドレスを取得
@@ -171,7 +176,7 @@
             commentList.innerHTML = comments.map((comment, index) => {
                 const iconUrl = (comment.author_icon || 'https://yt3.ggpht.com/ytc/default-avatar.jpg').replace(/\s+/g, '');
                 return `
-                    <div class="comment-item ${selectedComment === index ? 'selected' : ''}" 
+                    <div class="comment-item ${selectedComment === index ? 'selected' : ''} ${displayedComment === index ? 'displayed' : ''}" 
                          onclick="selectComment(${index})" 
                          ondblclick="handleDoubleClick(${index})">
                         <img class="author-icon" src="${escapeHtml(iconUrl)}" 
@@ -210,6 +215,7 @@
             if (selectedComment === null || !ws) return;
             
             const comment = comments[selectedComment];
+            displayedComment = selectedComment;
             ws.send(JSON.stringify({
                 type: 'select_comment',
                 comment: comment
@@ -219,6 +225,7 @@
         function clearDisplay() {
             if (!ws) return;
             
+            displayedComment = null;
             ws.send(JSON.stringify({
                 type: 'select_comment',
                 comment: null
