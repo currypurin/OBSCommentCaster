@@ -53,7 +53,8 @@
         }
 
         .comment-item.selected {
-            background-color: #e3f2fd;
+            background-color: orange;
+            border: 2px solid #fff;
         }
 
         .comment-item.displayed {
@@ -118,84 +119,158 @@
 
     <script>
         let comments = [];
-        let selectedComment = null;
-        let displayedComment = null;
+        let selectedMessageId = null;
         let ws = null;
 
-        // サーバーのホストアドレスを取得
-        async function getServerHost() {
-            return window.location.hostname;
+        // スタイルの設定（既存のstyle要素があれば削除）
+        const existingStyle = document.getElementById('comment-styles');
+        if (existingStyle) {
+            existingStyle.remove();
         }
 
-        // WebSocket接続を確立
-        async function connectWebSocket() {
-            try {
-                const serverHost = await getServerHost();
-                console.log('Connecting to WebSocket server at:', serverHost);
-                ws = new WebSocket(`ws://${serverHost}:8000/ws/admin`);
+        // 新しいstyle要素を作成
+        const commentStyles = document.createElement('style');
+        commentStyles.id = 'comment-styles';
+        commentStyles.textContent = `
+            .comment {
+                margin: 10px;
+                padding: 15px;
+                border-radius: 5px;
+                background-color: white;
+                cursor: pointer;
+                transition: background-color 0.3s ease;
+                border: 1px solid #eee;
+                display: flex;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .comment.selected {
+                background-color: orange !important;
+                border: 2px solid white !important;
+            }
+
+            .comment:hover {
+                background-color: #f5f5f5;
+            }
+
+            .author-icon {
+                width: 50px;
+                height: 50px;
+                border-radius: 4px;
+                object-fit: cover;
+                flex-shrink: 0;
+            }
+
+            .comment-content {
+                flex-grow: 1;
+            }
+
+            .author-line {
+                display: flex;
+                align-items: center;
+                gap: 5px;
+                margin-bottom: 5px;
+                white-space: nowrap;
+            }
+
+            .author {
+                font-weight: bold;
+                color: #333;
+            }
+
+            .timestamp {
+                color: #666;
+                font-size: 0.9em;
+            }
+
+            .text {
+                line-height: 1.4;
+            }
+        `;
+
+        document.head.appendChild(commentStyles);
+
+        // WebSocket接続の初期化
+        async function initializeWebSocket() {
+            const serverHost = window.location.hostname;
+            ws = new WebSocket(`ws://${serverHost}:8000/ws/admin`);
+
+            // WebSocket接続確立後にイベントハンドラを設定
+            ws.onmessage = function(event) {
+                const message = JSON.parse(event.data);
+                if (message.type === 'new_comment') {
+                    addCommentToList(message.comment);
+                }
+            };
+        }
+
+        // コメントをリストに追加する関数
+        function addCommentToList(comment) {
+            comments.unshift(comment);
+            const commentList = document.getElementById('commentList');
+            
+            const commentElement = document.createElement('div');
+            commentElement.className = 'comment';
+            commentElement.setAttribute('data-message-id', comment.message_id);
+            
+            // 時刻のフォーマット
+            function formatDateTime(dateTimeStr) {
+                const date = new Date(dateTimeStr);
+                let hours = date.getHours();
+                const minutes = date.getMinutes().toString().padStart(2, '0');
+                const seconds = date.getSeconds().toString().padStart(2, '0');
+                const ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12;
+                hours = hours ? hours : 12;
+                return `${hours}:${minutes}:${seconds} ${ampm}`;
+            }
+            
+            commentElement.innerHTML = `
+                <img src="${comment.author_icon}" class="author-icon" onerror="this.src='default_icon.png'">
+                <div class="comment-content">
+                    <div class="author-line">
+                        <span class="author">${comment.author}:</span>
+                        <span class="timestamp">${formatDateTime(comment.timestamp)}</span>
+                    </div>
+                    <div class="text">${comment.text}</div>
+                </div>
+            `;
+            
+            // ダブルクリックイベントハンドラ
+            commentElement.addEventListener('dblclick', function() {
+                const allComments = document.querySelectorAll('.comment');
+                allComments.forEach(c => {
+                    c.classList.remove('selected');
+                });
                 
-                // オーバーレイURLを更新
-                document.getElementById('overlayUrl').textContent = `http://${serverHost}:8000/`;
+                this.classList.add('selected');
+                selectedMessageId = this.getAttribute('data-message-id');
                 
-                ws.onopen = function() {
-                    console.log('WebSocket connection established');
-                };
-                
-                ws.onmessage = function(event) {
-                    console.log('Received message:', event.data);
-                    const message = JSON.parse(event.data);
-                    if (message.type === 'new_comment') {
-                        addCommentToList(message.comment);
-                    }
-                };
-                
-                ws.onclose = function() {
-                    console.log('接続が切断されました。再接続を試みます...');
-                    setTimeout(connectWebSocket, 5000);
-                };
-                
-                ws.onerror = function(error) {
-                    console.error('WebSocket エラー:', error);
-                };
-            } catch (error) {
-                console.error('WebSocket connection error:', error);
-                setTimeout(connectWebSocket, 5000);
+                const selectedComment = comments.find(c => c.message_id === selectedMessageId);
+                ws.send(JSON.stringify({
+                    type: 'select_comment',
+                    comment: selectedComment
+                }));
+            });
+            
+            commentList.insertBefore(commentElement, commentList.firstChild);
+            
+            if (comments.length > 100) {
+                const removedComment = comments.pop();
+                if (commentList.lastChild) {
+                    commentList.removeChild(commentList.lastChild);
+                }
+                if (removedComment.message_id === selectedMessageId) {
+                    selectedMessageId = null;
+                }
             }
         }
-        
-        // 初期接続
-        connectWebSocket();
 
-        function addCommentToList(comment) {
-            comments.unshift(comment);  // 新しいコメントを先頭に追加
-            updateCommentList();
-        }
-
-        function updateCommentList() {
-            const commentList = document.getElementById('commentList');
-            commentList.innerHTML = comments.map((comment, index) => {
-                const iconUrl = (comment.author_icon || 'https://yt3.ggpht.com/ytc/default-avatar.jpg').replace(/\s+/g, '');
-                return `
-                    <div class="comment-item ${selectedComment === index ? 'selected' : ''} ${displayedComment === index ? 'displayed' : ''}" 
-                         onclick="selectComment(${index})" 
-                         ondblclick="handleDoubleClick(${index})">
-                        <img class="author-icon" src="${escapeHtml(iconUrl)}" 
-                             onerror="this.src='https://yt3.ggpht.com/ytc/default-avatar.jpg'" 
-                             alt="${escapeHtml(comment.author)}">
-                        <div class="comment-content">
-                            <div class="comment-author">${escapeHtml(comment.author)}</div>
-                            <div class="comment-text">${escapeHtml(comment.text)}</div>
-                            <div class="comment-time">${new Date(comment.timestamp).toLocaleString()}</div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function selectComment(index) {
-            selectedComment = index;
-            updateCommentList();
-        }
+        // ページ読み込み完了時にWebSocket接続を初期化
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeWebSocket();
+        });
 
         function editComment(index) {
             const comment = comments[index];
@@ -212,10 +287,9 @@
         }
 
         function displaySelectedComment() {
-            if (selectedComment === null || !ws) return;
+            if (selectedMessageId === null || !ws) return;
             
-            const comment = comments[selectedComment];
-            displayedComment = selectedComment;
+            const comment = comments.find(c => c.message_id === selectedMessageId);
             ws.send(JSON.stringify({
                 type: 'select_comment',
                 comment: comment
@@ -225,7 +299,7 @@
         function clearDisplay() {
             if (!ws) return;
             
-            displayedComment = null;
+            selectedMessageId = null;
             ws.send(JSON.stringify({
                 type: 'select_comment',
                 comment: null
@@ -242,13 +316,30 @@
             if (!ws) return;
             
             const comment = comments[index];
-            selectedComment = index;
-            displayedComment = index;
+            selectedMessageId = comment.message_id;
             ws.send(JSON.stringify({
                 type: 'select_comment',
                 comment: comment
             }));
-            updateCommentList();
+        }
+
+        // 選択中のコメントの位置を更新する関数
+        function updateSelectedCommentPosition() {
+            if (selectedMessageId === null) return;
+
+            const commentList = document.getElementById('commentList');
+            const allComments = Array.from(commentList.querySelectorAll('.comment'));
+            
+            // すべての選択を解除
+            allComments.forEach(comment => {
+                comment.classList.remove('selected');
+            });
+            
+            // インデックスが有効な範囲内かチェック
+            if (selectedMessageId >= 0 && selectedMessageId < allComments.length) {
+                // インデックスの位置のコメントを選択
+                allComments[selectedMessageId].classList.add('selected');
+            }
         }
     </script>
 </body>
