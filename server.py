@@ -11,6 +11,7 @@ from googleapiclient.discovery import build
 import base64
 import aiohttp
 from config import app_config  # 設定を追加
+from urllib.parse import urlparse, parse_qs  # 追加
 
 # 環境変数の読み込み
 load_dotenv()
@@ -201,11 +202,34 @@ async def websocket_display_endpoint(websocket: WebSocket):
         manager.disconnect(websocket, "display")
 
 
+def extract_video_id_from_url(live_url: str) -> Optional[str]:
+    """YouTubeのURLからvideo_idを抽出"""
+    try:
+        parsed_url = urlparse(live_url)
+        # 通常のYouTube URL (例: https://www.youtube.com/watch?v=xxxx)
+        if parsed_url.hostname in ["www.youtube.com", "youtube.com"]:
+            qs = parse_qs(parsed_url.query)
+            if "v" in qs:
+                return qs["v"][0]
+        # 短縮URL (例: https://youtu.be/xxxx)
+        if parsed_url.hostname == "youtu.be":
+            return parsed_url.path.lstrip("/")
+    except Exception as e:
+        print(f"URLからvideo_id抽出失敗: {e}")
+    return None
+
+
 @app.post("/api/youtube/set-live-chat")
-async def set_live_chat(video_id: Optional[str] = None, channel_id: Optional[str] = None):
-    """YouTubeのライブチャットIDを設定"""
+async def set_live_chat(video_id: Optional[str] = None, channel_id: Optional[str] = None, live_url: Optional[str] = None):
+    """YouTubeのライブチャットIDを設定 (live_url対応)"""
     if not manager.youtube_api:
         raise HTTPException(status_code=400, detail="YouTube API is not configured")
+
+    # live_urlが指定された場合はvideo_idを抽出
+    if live_url:
+        video_id = extract_video_id_from_url(live_url)
+        if not video_id:
+            raise HTTPException(status_code=400, detail="Invalid YouTube Live URL")
 
     if not video_id and not channel_id:
         channel_id = os.getenv("YOUTUBE_CHANNEL_ID")

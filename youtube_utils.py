@@ -37,12 +37,14 @@ class YouTubeAPI:
         """ライブチャットIDを取得"""
         try:
             if video_id:
+                print(f"[DEBUG] get_live_chat_id: video_id={video_id}")
                 request = self.youtube.videos().list(
                     part="liveStreamingDetails,snippet,status",
                     id=video_id,
                     fields="items(id,snippet(title,channelId,channelTitle),status,liveStreamingDetails)"
                 )
                 response = request.execute()
+                print(f"[DEBUG] get_live_chat_id: API response={response}")
                 self._update_quota_usage(1)
 
                 if response.get("items"):
@@ -122,21 +124,28 @@ class YouTubeAPI:
                     self.debug_print(f"DEBUG: 既に処理済みのメッセージをスキップ: {message_id}")
                     continue
 
-                if "snippet" in item and "displayMessage" in item["snippet"]:
+                snippet = item.get("snippet", {})
+                msg_type = snippet.get("type", "textMessageEvent")
+                is_superchat = msg_type == "superChatEvent"
+                superchat_details = snippet.get("superChatDetails", {}) if is_superchat else None
+
+                if "displayMessage" in snippet:
                     self.debug_print("DEBUG: メッセージの詳細情報:")
                     self.debug_print("  Author Details:")
                     for key, value in item["authorDetails"].items():
                         self.debug_print(f"    {key}: {value}")
                     self.debug_print("  Snippet:")
-                    for key, value in item["snippet"].items():
+                    for key, value in snippet.items():
                         self.debug_print(f"    {key}: {value}")
 
                     message = {
-                        "text": item["snippet"]["displayMessage"],
+                        "text": snippet["displayMessage"],
                         "author": item["authorDetails"]["displayName"],
-                        "timestamp": item["snippet"]["publishedAt"],
+                        "timestamp": snippet["publishedAt"],
                         "message_id": message_id,
-                        "author_icon": item["authorDetails"].get("profileImageUrl", app_config.DEFAULT_PROFILE_IMAGE)
+                        "author_icon": item["authorDetails"].get("profileImageUrl", app_config.DEFAULT_PROFILE_IMAGE),
+                        "type": "superchat" if is_superchat else "chat",
+                        "superchat": superchat_details
                     }
                     messages.append(message)
                     self.processed_message_ids.add(message_id)
