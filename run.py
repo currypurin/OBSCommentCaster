@@ -15,6 +15,7 @@ def main():
     print("\n=== 環境変数の確認 ===")
     server_host = os.getenv('SERVER_HOST')
     youtube_api_key = os.getenv('YOUTUBE_API_KEY')
+    print(youtube_api_key)
     youtube_channel_id = os.getenv('YOUTUBE_CHANNEL_ID')
 
     print(f"SERVER_HOST: {server_host or '未設定'}")

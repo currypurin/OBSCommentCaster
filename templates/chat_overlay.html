@@ -96,7 +96,7 @@
 </head>
 <body>
     <div id="chat-container"></div>
-    <button id="testSuperchatBtn" style="position:fixed;top:10px;right:10px;z-index:1000;">スパチャテスト</button>
+    <button id="testSuperchatBtn" style="display:none;position:fixed;top:10px;right:10px;z-index:1000;">スパチャテスト</button>
 
     <script>
         const MAX_MESSAGES = 5;  // 表示する最大メッセージ数
@@ -284,6 +284,16 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // URLパラメータでテストボタンの表示/非表示を切り替え
+        window.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('test') === '1') {
+                document.getElementById('testSuperchatBtn').style.display = '';
+            } else {
+                document.getElementById('testSuperchatBtn').style.display = 'none';
+            }
+        });
 
         // スパチャテスト用ボタン
         document.getElementById('testSuperchatBtn').onclick = function() {
