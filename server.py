@@ -22,9 +22,11 @@ app = FastAPI()
 # 静的ファイルのマウント
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
+
 # リクエストボディのモデルを定義
 class LiveUrlRequest(BaseModel):
     live_url: str
+
 
 # WebSocket接続を管理するクラス
 class ConnectionManager:
