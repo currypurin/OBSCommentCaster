@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from googleapiclient.errors import HttpError
-from config import app_config, env_config
+from config import app_config
 
 
 class YouTubeAPI:
@@ -14,11 +14,6 @@ class YouTubeAPI:
         self.daily_quota_used = 0
         self.quota_reset_time = datetime.now()
         self.next_page_token = None
-
-    def debug_print(self, *args, **kwargs):
-        """デバッグ出力を制御する関数"""
-        if env_config.DEBUG:
-            print(*args, **kwargs)
 
     def _update_quota_usage(self, units: int):
         """クォータ使用量を追跡"""
@@ -37,28 +32,17 @@ class YouTubeAPI:
         """ライブチャットIDを取得"""
         try:
             if video_id:
-                print(f"[DEBUG] get_live_chat_id: video_id={video_id}")
                 request = self.youtube.videos().list(
                     part="liveStreamingDetails,snippet,status",
                     id=video_id,
                     fields="items(id,snippet(title,channelId,channelTitle),status,liveStreamingDetails)"
                 )
                 response = request.execute()
-                print(f"[DEBUG] get_live_chat_id: API response={response}")
                 self._update_quota_usage(1)
 
                 if response.get("items"):
                     item = response["items"][0]
                     details = item.get("liveStreamingDetails", {})
-                    snippet = item.get("snippet", {})
-                    status = item.get("status", {})
-
-                    self.debug_print("DEBUG: 動画情報:")
-                    self.debug_print(f"  タイトル: {snippet.get('title')}")
-                    self.debug_print(f"  チャンネルID: {snippet.get('channelId')}")
-                    self.debug_print(f"  チャンネル名: {snippet.get('channelTitle')}")
-                    self.debug_print(f"  公開状態: {status.get('privacyStatus')}")
-
                     return details.get("activeLiveChatId")
 
             if channel_id:
@@ -79,8 +63,8 @@ class YouTubeAPI:
             return None
 
         except HttpError as e:
-            self.debug_print(f"DEBUG: HTTPエラー発生: {e.resp.status}")
-            self.debug_print(f"DEBUG: エラー内容: {e.content.decode('utf-8')}")
+            if e.resp.status == 403:
+                print("クォータ制限に達した可能性があります")
             return None
 
     def get_live_chat_messages(self) -> List[Dict]:
@@ -93,9 +77,6 @@ class YouTubeAPI:
             if time_since_last_request < timedelta(seconds=app_config.MESSAGE_FETCH_INTERVAL):
                 return []
 
-            self.debug_print("\nDEBUG: ライブチャットメッセージを取得中...")
-            self.debug_print(f"DEBUG: チャットID: {self.live_chat_id}")
-
             request = self.youtube.liveChatMessages().list(
                 liveChatId=self.live_chat_id,
                 part="snippet,authorDetails",
@@ -106,22 +87,16 @@ class YouTubeAPI:
             self.last_request_time = datetime.now()
             self._update_quota_usage(1)
 
-            self.debug_print(f"DEBUG: APIレスポンス: {response}")
-
             if "items" not in response:
-                self.debug_print("DEBUG: メッセージが見つかりません")
                 return []
 
             # 次のページトークンを保存
             self.next_page_token = response.get("nextPageToken")
-            if self.next_page_token:
-                self.debug_print(f"DEBUG: 次のページトークン: {self.next_page_token}")
 
             messages = []
             for item in response.get("items", []):
                 message_id = item["id"]
                 if message_id in self.processed_message_ids:
-                    self.debug_print(f"DEBUG: 既に処理済みのメッセージをスキップ: {message_id}")
                     continue
 
                 snippet = item.get("snippet", {})
@@ -130,14 +105,6 @@ class YouTubeAPI:
                 superchat_details = snippet.get("superChatDetails", {}) if is_superchat else None
 
                 if "displayMessage" in snippet:
-                    self.debug_print("DEBUG: メッセージの詳細情報:")
-                    self.debug_print("  Author Details:")
-                    for key, value in item["authorDetails"].items():
-                        self.debug_print(f"    {key}: {value}")
-                    self.debug_print("  Snippet:")
-                    for key, value in snippet.items():
-                        self.debug_print(f"    {key}: {value}")
-
                     message = {
                         "text": snippet["displayMessage"],
                         "author": item["authorDetails"]["displayName"],
@@ -149,20 +116,13 @@ class YouTubeAPI:
                     }
                     messages.append(message)
                     self.processed_message_ids.add(message_id)
-                    self.debug_print("DEBUG: 作成されたメッセージオブジェクト:")
-                    for key, value in message.items():
-                        self.debug_print(f"    {key}: {value}")
 
                     if len(self.processed_message_ids) > app_config.MAX_PROCESSED_MESSAGES:
                         self.processed_message_ids = set(list(self.processed_message_ids)[-app_config.MAX_PROCESSED_MESSAGES:])
-                else:
-                    self.debug_print(f"DEBUG: 不正なメッセージ形式: {item}")
 
             return messages
 
         except HttpError as e:
-            self.debug_print(f"DEBUG: HTTPエラー発生: {e.resp.status}")
-            self.debug_print(f"DEBUG: エラー内容: {e.content.decode('utf-8')}")
             if e.resp.status == 403:
                 print("クォータ制限に達した可能性があります")
             return []
