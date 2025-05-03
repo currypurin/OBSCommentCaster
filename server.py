@@ -12,6 +12,7 @@ import base64
 import aiohttp
 from config import app_config  # 設定を追加
 from urllib.parse import urlparse, parse_qs  # 追加
+from pydantic import BaseModel  # 追加
 
 # 環境変数の読み込み
 load_dotenv()
@@ -21,6 +22,9 @@ app = FastAPI()
 # 静的ファイルのマウント
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
 
+# リクエストボディのモデルを定義
+class LiveUrlRequest(BaseModel):
+    live_url: str
 
 # WebSocket接続を管理するクラス
 class ConnectionManager:
@@ -223,13 +227,13 @@ def extract_video_id_from_url(live_url: str) -> Optional[str]:
 
 
 @app.post("/api/youtube/set-live-chat")
-async def set_live_chat(live_url: str):
+async def set_live_chat(request: LiveUrlRequest):
     """YouTubeのライブチャットIDを設定"""
     if not manager.youtube_api:
         raise HTTPException(status_code=400, detail="YouTube API is not configured")
 
     # live_urlからvideo_idを抽出
-    video_id = extract_video_id_from_url(live_url)
+    video_id = extract_video_id_from_url(request.live_url)
     if not video_id:
         raise HTTPException(status_code=400, detail="Invalid YouTube Live URL")
 
