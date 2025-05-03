@@ -104,6 +104,9 @@
 
     <div class="input-group">
         <h2>コメント一覧</h2>
+        <div class="button-group">
+            <button class="secondary" onclick="clearDisplay()">表示を消去</button>
+        </div>
         <div id="commentList"></div>
         <div class="button-group">
             <button onclick="displaySelectedComment()">選択したコメントを表示</button>
@@ -115,6 +118,13 @@
         <h2>オーバーレイの表示</h2>
         <p>以下のURLをOBSのブラウザソースとして追加してください：</p>
         <code id="overlayUrl">http://localhost:8000/</code>
+    </div>
+
+    <div class="input-group">
+        <h2>ライブURL設定</h2>
+        <input type="text" id="liveUrlInput" placeholder="YouTube LiveのURLを入力" style="width:60%">
+        <button onclick="setLiveUrl()">このURLでライブ取得</button>
+        <span id="liveUrlStatus" style="margin-left:10px;"></span>
     </div>
 
     <script>
@@ -339,6 +349,36 @@
             if (selectedMessageId >= 0 && selectedMessageId < allComments.length) {
                 // インデックスの位置のコメントを選択
                 allComments[selectedMessageId].classList.add('selected');
+            }
+        }
+
+        async function setLiveUrl() {
+            const url = document.getElementById('liveUrlInput').value.trim();
+            const status = document.getElementById('liveUrlStatus');
+            if (!url) {
+                status.textContent = 'URLを入力してください';
+                status.style.color = 'red';
+                return;
+            }
+            status.textContent = '設定中...';
+            status.style.color = 'black';
+            try {
+                const res = await fetch('/api/youtube/set-live-chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ live_url: url })
+                });
+                if (res.ok) {
+                    status.textContent = 'ライブ取得に成功しました';
+                    status.style.color = 'green';
+                } else {
+                    const data = await res.json();
+                    status.textContent = '失敗: ' + (data.detail || '不明なエラー');
+                    status.style.color = 'red';
+                }
+            } catch (e) {
+                status.textContent = '通信エラー';
+                status.style.color = 'red';
             }
         }
     </script>

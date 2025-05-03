@@ -73,10 +73,30 @@
             from { opacity: 1; transform: translateY(0); }
             to { opacity: 0; transform: translateY(-20px); }
         }
+
+        .superchat {
+            background: linear-gradient(90deg, #ff9800, #ffeb3b, #ff9800);
+            color: #222;
+            font-weight: bold;
+            border: 3px solid #ff9800;
+            animation: superchat-pop 1s ease;
+            box-shadow: 0 0 30px 10px #ff980088;
+        }
+        @keyframes superchat-pop {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            60% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); }
+        }
+        .superchat-amount {
+            font-size: 1.5em;
+            color: #d32f2f;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
     <div id="chat-container"></div>
+    <button id="testSuperchatBtn" style="display:none;position:fixed;top:10px;right:10px;z-index:1000;">スパチャテスト</button>
 
     <script>
         const MAX_MESSAGES = 5;  // 表示する最大メッセージ数
@@ -184,7 +204,11 @@
             
             try {
                 const messageElement = document.createElement('div');
-                messageElement.className = 'chat-message' + (isSelected ? ' selected' : '');
+                let className = 'chat-message' + (isSelected ? ' selected' : '');
+                if (message.type === 'superchat') {
+                    className += ' superchat';
+                }
+                messageElement.className = className;
                 
                 // Base64エンコードされた画像を直接使用
                 const iconUrl = message.author_icon || 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMDAsKCwsNDhIQDQ4RDgsLEBYQERMUFRUVDA8XGBYUGBIUFRT/2wBDAQMEBAUEBQkFBQkUDQsNFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBT/wAARCAAgACADASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9U6KKKACiiigAooooAKKKKAP/2Q==';
@@ -193,12 +217,20 @@
                 const author = message.author || '不明なユーザー';
                 const text = message.text || '';
                 
+                let superchatHtml = '';
+                if (message.type === 'superchat' && message.superchat) {
+                    if (message.superchat.superChatAmountDisplayString) {
+                        superchatHtml += `<div class="superchat-amount">${escapeHtml(message.superchat.superChatAmountDisplayString)}</div>`;
+                    }
+                }
+                
                 messageElement.innerHTML = `
                     <img class="author-icon" src="${escapeHtml(iconUrl)}" 
                          alt="${escapeHtml(author)}">
                     <div class="message-content">
                         <div class="author">${escapeHtml(author)}</div>
                         <div class="text">${escapeHtml(text)}</div>
+                        ${superchatHtml}
                     </div>
                 `;
                 
@@ -252,6 +284,33 @@
             div.textContent = text;
             return div.innerHTML;
         }
+
+        // URLパラメータでテストボタンの表示/非表示を切り替え
+        window.addEventListener('DOMContentLoaded', function() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('test') === '1') {
+                document.getElementById('testSuperchatBtn').style.display = '';
+            } else {
+                document.getElementById('testSuperchatBtn').style.display = 'none';
+            }
+        });
+
+        // スパチャテスト用ボタン
+        document.getElementById('testSuperchatBtn').onclick = function() {
+            const dummySuperchat = {
+                type: 'superchat',
+                author: 'テストユーザー',
+                text: 'これはテスト用スパチャです！',
+                author_icon: '',
+                timestamp: new Date().toISOString(),
+                message_id: 'test-superchat-' + Date.now(),
+                superchat: {
+                    superChatAmountDisplayString: '¥10,000',
+                    // 必要なら他のsuperChatDetailsも追加
+                }
+            };
+            addChatMessage(dummySuperchat, false);
+        };
     </script>
 </body>
 </html> 
