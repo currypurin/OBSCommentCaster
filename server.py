@@ -220,6 +220,10 @@ def extract_video_id_from_url(live_url: str) -> Optional[str]:
             qs = parse_qs(parsed_url.query)
             if "v" in qs:
                 return qs["v"][0]
+            # /live/形式のURL (例: https://www.youtube.com/live/xxxx)
+            path_parts = parsed_url.path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'live':
+                return path_parts[2]
         # 短縮URL (例: https://youtu.be/xxxx)
         if parsed_url.hostname == "youtu.be":
             return parsed_url.path.lstrip("/")
@@ -232,12 +236,18 @@ def extract_video_id_from_url(live_url: str) -> Optional[str]:
 async def set_live_chat(request: LiveUrlRequest):
     """YouTubeのライブチャットIDを設定"""
     if not manager.youtube_api:
-        raise HTTPException(status_code=400, detail="YouTube API is not configured")
+        raise HTTPException(
+            status_code=400,
+            detail="YouTube APIが設定されていません。.envファイルにYOUTUBE_API_KEYを設定してください。"
+        )
 
     # live_urlからvideo_idを抽出
     video_id = extract_video_id_from_url(request.live_url)
     if not video_id:
-        raise HTTPException(status_code=400, detail="Invalid YouTube Live URL")
+        raise HTTPException(
+            status_code=400,
+            detail="無効なYouTube URLです。以下の形式のURLを入力してください：\n- https://www.youtube.com/watch?v=動画ID\n- https://youtu.be/動画ID"
+        )
 
     # 既存のコメント取得タスクを停止
     await manager.stop_fetching_comments()
@@ -245,7 +255,10 @@ async def set_live_chat(request: LiveUrlRequest):
     # 新しいライブチャットIDを取得
     chat_id = manager.youtube_api.get_live_chat_id(video_id=video_id)
     if not chat_id:
-        raise HTTPException(status_code=404, detail="Live chat not found")
+        raise HTTPException(
+            status_code=404,
+            detail="ライブチャットが見つかりません。以下の点を確認してください：\n1. 配信がライブ配信であること\n2. 配信が開始されていること\n3. チャットが有効になっていること"
+        )
 
     # ライブチャットIDを設定
     manager.youtube_api.set_live_chat_id(chat_id)
