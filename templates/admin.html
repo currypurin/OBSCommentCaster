@@ -132,6 +132,15 @@
         let selectedMessageId = null;
         let ws = null;
 
+        const SUPERCHAT_COLORS = {
+            1: '#2196f3',
+            2: '#1e88e5',
+            3: '#4caf50',
+            4: '#ffeb3b',
+            5: '#ff9800',
+            6: '#f44336'
+        };
+
         // スタイルの設定（既存のstyle要素があれば削除）
         const existingStyle = document.getElementById('comment-styles');
         if (existingStyle) {
@@ -246,6 +255,13 @@
                     <div class="text">${comment.text}</div>
                 </div>
             `;
+
+            if (comment.type === 'superchat' && comment.superchat) {
+                const tier = comment.superchat.tier;
+                const color = SUPERCHAT_COLORS[tier] || '#ff9800';
+                commentElement.style.background = color;
+                commentElement.style.color = '#000';
+            }
             
             // ダブルクリックイベントハンドラ
             commentElement.addEventListener('dblclick', function() {
