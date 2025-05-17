@@ -15,13 +15,11 @@ def main():
     print("\n=== 環境変数の確認 ===")
     server_host = os.getenv('SERVER_HOST')
     youtube_api_key = os.getenv('YOUTUBE_API_KEY')
-    youtube_channel_id = os.getenv('YOUTUBE_CHANNEL_ID')
 
     print(f"SERVER_HOST: {server_host or '未設定'}")
-    print(f"YOUTUBE_CHANNEL_ID: {youtube_channel_id or '未設定'}")
     print(f"YOUTUBE_API_KEY: {'設定済み' if youtube_api_key else '未設定'}")
     print("==================\n")
-
+    print(youtube_api_key)
     # サーバーを起動
     print("FastAPIサーバーを起動します...")
     uvicorn.run(

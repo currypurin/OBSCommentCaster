@@ -11,6 +11,8 @@ from googleapiclient.discovery import build
 import base64
 import aiohttp
 from config import app_config  # 設定を追加
+from urllib.parse import urlparse, parse_qs  # 追加
+from pydantic import BaseModel  # 追加
 
 # 環境変数の読み込み
 load_dotenv()
@@ -19,6 +21,11 @@ app = FastAPI()
 
 # 静的ファイルのマウント
 app.mount("/templates", StaticFiles(directory="templates"), name="templates")
+
+
+# リクエストボディのモデルを定義
+class LiveUrlRequest(BaseModel):
+    live_url: str
 
 
 # WebSocket接続を管理するクラス
@@ -30,6 +37,7 @@ class ConnectionManager:
         }
         self.selected_comment = None
         self.comments = []  # 最新のコメントを保持するリスト
+        self.fetch_task = None  # コメント取得タスクを保持する変数
 
         # YouTube API の初期化
         api_key = os.getenv("YOUTUBE_API_KEY")
@@ -120,29 +128,31 @@ class ConnectionManager:
                         }))
             await asyncio.sleep(5)  # 5秒待機
 
+    async def start_fetching_comments(self):
+        """コメント取得タスクを開始"""
+        if self.fetch_task:
+            self.fetch_task.cancel()  # 既存のタスクがあればキャンセル
+        self.fetch_task = asyncio.create_task(self.fetch_youtube_comments())
+
+    async def stop_fetching_comments(self):
+        """コメント取得タスクを停止"""
+        if self.fetch_task:
+            self.fetch_task.cancel()
+            self.fetch_task = None
+
 
 manager = ConnectionManager()
 
 
 @app.on_event("startup")
 async def startup_event():
-    """サーバー起動時にYouTubeのライブチャットIDを設定"""
+    """サーバー起動時の初期化"""
     await manager.start()  # aiohttp sessionの初期化
+    # YouTube APIの初期化のみ行い、コメント取得は開始しない
     if manager.youtube_api:
-        channel_id = os.getenv("YOUTUBE_CHANNEL_ID")
-        if channel_id:
-            chat_id = manager.youtube_api.get_live_chat_id(channel_id=channel_id)
-            if chat_id:
-                manager.youtube_api.set_live_chat_id(chat_id)
-                # コメント取得タスクを開始
-                asyncio.create_task(manager.fetch_youtube_comments())
-                # print(f"Live chat ID set: {chat_id}")
-            else:
-                # print("No active live chat found")
-                pass
-        else:
-            # print("Warning: YOUTUBE_CHANNEL_ID not found in environment variables")
-            pass
+        print("YouTube API initialized")
+    else:
+        print("Warning: YouTube API is not configured")
 
 
 @app.on_event("shutdown")
@@ -201,24 +211,59 @@ async def websocket_display_endpoint(websocket: WebSocket):
         manager.disconnect(websocket, "display")
 
 
+def extract_video_id_from_url(live_url: str) -> Optional[str]:
+    """YouTubeのURLからvideo_idを抽出"""
+    try:
+        parsed_url = urlparse(live_url)
+        # 通常のYouTube URL (例: https://www.youtube.com/watch?v=xxxx)
+        if parsed_url.hostname in ["www.youtube.com", "youtube.com"]:
+            qs = parse_qs(parsed_url.query)
+            if "v" in qs:
+                return qs["v"][0]
+            # /live/形式のURL (例: https://www.youtube.com/live/xxxx)
+            path_parts = parsed_url.path.split('/')
+            if len(path_parts) >= 3 and path_parts[1] == 'live':
+                return path_parts[2]
+        # 短縮URL (例: https://youtu.be/xxxx)
+        if parsed_url.hostname == "youtu.be":
+            return parsed_url.path.lstrip("/")
+    except Exception as e:
+        print(f"URLからvideo_id抽出失敗: {e}")
+    return None
+
+
 @app.post("/api/youtube/set-live-chat")
-async def set_live_chat(video_id: Optional[str] = None, channel_id: Optional[str] = None):
+async def set_live_chat(request: LiveUrlRequest):
     """YouTubeのライブチャットIDを設定"""
     if not manager.youtube_api:
-        raise HTTPException(status_code=400, detail="YouTube API is not configured")
+        raise HTTPException(
+            status_code=400,
+            detail="YouTube APIが設定されていません。.envファイルにYOUTUBE_API_KEYを設定してください。"
+        )
 
-    if not video_id and not channel_id:
-        channel_id = os.getenv("YOUTUBE_CHANNEL_ID")
-        if not channel_id:
-            raise HTTPException(status_code=400, detail="Neither video_id nor channel_id provided")
+    # live_urlからvideo_idを抽出
+    video_id = extract_video_id_from_url(request.live_url)
+    if not video_id:
+        raise HTTPException(
+            status_code=400,
+            detail="無効なYouTube URLです。以下の形式のURLを入力してください：\n- https://www.youtube.com/watch?v=動画ID\n- https://youtu.be/動画ID"
+        )
 
-    chat_id = manager.youtube_api.get_live_chat_id(channel_id=channel_id, video_id=video_id)
+    # 既存のコメント取得タスクを停止
+    await manager.stop_fetching_comments()
+
+    # 新しいライブチャットIDを取得
+    chat_id = manager.youtube_api.get_live_chat_id(video_id=video_id)
     if not chat_id:
-        raise HTTPException(status_code=404, detail="Live chat not found")
+        raise HTTPException(
+            status_code=404,
+            detail="ライブチャットが見つかりません。以下の点を確認してください：\n1. 配信がライブ配信であること\n2. 配信が開始されていること\n3. チャットが有効になっていること"
+        )
 
+    # ライブチャットIDを設定
     manager.youtube_api.set_live_chat_id(chat_id)
 
     # コメント取得タスクを開始
-    asyncio.create_task(manager.fetch_youtube_comments())
+    await manager.start_fetching_comments()
 
     return {"status": "success", "chat_id": chat_id}
