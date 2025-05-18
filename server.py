@@ -126,7 +126,7 @@ class ConnectionManager:
                                 "author_icon": message.get('author_icon', '')
                             }
                         }))
-            await asyncio.sleep(5)  # 5秒待機
+            await asyncio.sleep(app_config.MESSAGE_FETCH_INTERVAL)
 
     async def start_fetching_comments(self):
         """コメント取得タスクを開始"""
