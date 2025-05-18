@@ -152,7 +152,6 @@
                         console.log('パースされたメッセージ:', message);
                         console.log('メッセージの型:', message.type);
                         
-                        // 選択されたコメントのみを処理
                         if (message.type === 'selected_comment') {
                             console.log('選択されたコメントを表示:', message);
                             if (message.comment) {
@@ -160,8 +159,10 @@
                             } else {
                                 removeSelectedMessages();
                             }
+                        } else if (message.type === 'chat') {
+                            console.log('通常のチャットメッセージを表示:', message);
+                            addChatMessage(message, false);
                         }
-                        // 通常のチャットメッセージは無視
                     } catch (error) {
                         console.error('メッセージの処理中にエラーが発生しました:', error);
                         console.error('問題のメッセージ:', event.data);
@@ -213,7 +214,6 @@
                 console.log('選択されたコメントを表示:', comment);
                 const messageElement = addChatMessage(comment, true);
                 if (messageElement) {
-                    messageElement.classList.add('selected');
                     console.log('選択されたコメントの表示完了');
                 } else {
                     console.error('選択されたコメントの表示に失敗しました');
