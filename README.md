@@ -38,7 +38,7 @@ cp .env.example .env
 ```
 - `.env` ファイルを編集し、以下の項目を設定:
   - `YOUTUBE_API_KEY`: YouTubeのAPIキー
-  - `SERVER_HOST`: サーバーのホストアドレス（通常はローカルIPアドレス）
+  - `DEBUG`: デバッグモードを有効にする場合は `true`
 
 ## サーバーの管理
 
@@ -46,7 +46,8 @@ cp .env.example .env
 ```bash
 python run.py
 ```
-サーバー起動時に環境変数の設定状態が確認できます。
+リポジトリのルートで上記コマンドを実行するとサーバーが起動します。
+起動時には環境変数の設定状況が表示されます。
 
 ### サーバーの停止
 サーバーを実行しているターミナルで `Ctrl+C` を押してサーバーを停止することができます。
@@ -56,7 +57,7 @@ python run.py
 1. 管理画面へのアクセス:
 - ブラウザで `http://localhost:8000/admin` を開く
 - コメントの一覧が表示され、クリックで選択可能
-- ライブURLを入力して、コメント取得を開始
+- 画面上部の入力欄にYouTube LiveのURLを設定してコメント取得を開始
 
 2. OBSでの設定:
 - OBSを起動
@@ -69,6 +70,11 @@ python run.py
 3. 動作確認:
 - 管理画面でコメントをクリックすると、OBS画面に表示
 - コメントは自動的にフェードイン/アウト
+- スーパーチャットは自動的に強調表示されます
+
+4. 絵文字表示:
+- `templates/emoji_map.json` に絵文字コードと画像のパスを記述すると、
+  `:emoji:` 形式のテキストが画像に置き換えられます
 
 ### トラブルシューティング
 
@@ -95,9 +101,12 @@ OBSCommentCaster/
 ├── config.py
 ├── run.py
 ├── .env.example
+├── test_integration.py
 └── templates/
     ├── admin.html
-    └── chat_overlay.html
+    ├── chat_overlay.html
+    ├── emoji_map.json
+    └── emojis/
 ```
 
 ### 使用技術
@@ -112,6 +121,14 @@ OBSCommentCaster/
 - メッセージ取得間隔（秒）
 - 処理済みメッセージの最大保持数
 - デフォルトのプロフィール画像URL
+
+### 統合テスト
+
+`test_integration.py` を実行すると、YouTube API との連携を確認できます。
+実行には `YOUTUBE_VIDEO_ID` 環境変数にライブ動画のIDを設定しておく必要があります。
+```bash
+YOUTUBE_VIDEO_ID=動画ID python test_integration.py
+```
 
 ## ライセンス
 
