@@ -97,6 +97,11 @@
         .button-group button.secondary:hover {
             background-color: #555;
         }
+        .emoji {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -131,6 +136,28 @@
         let comments = [];
         let selectedMessageId = null;
         let ws = null;
+        let emojiMap = {};
+
+        async function loadEmojiMap() {
+            try {
+                const res = await fetch('/templates/emoji_map.json');
+                if (res.ok) {
+                    emojiMap = await res.json();
+                }
+            } catch (e) {
+                console.error('emoji_map.json の読み込みに失敗しました', e);
+            }
+        }
+
+        function replaceEmojis(text) {
+            return text.replace(/:[^:\s]+:/g, match => {
+                const path = emojiMap[match];
+                if (path) {
+                    return `<img src="/templates/${path}" class="emoji">`;
+                }
+                return match;
+            });
+        }
 
         // スタイルの設定（既存のstyle要素があれば削除）
         const existingStyle = document.getElementById('comment-styles');
@@ -243,7 +270,7 @@
                         <span class="author">${comment.author}:</span>
                         <span class="timestamp">${formatDateTime(comment.timestamp)}</span>
                     </div>
-                    <div class="text">${comment.text}</div>
+                    <div class="text">${replaceEmojis(escapeHtml(comment.text))}</div>
                 </div>
             `;
             
@@ -278,7 +305,8 @@
         }
 
         // ページ読み込み完了時にWebSocket接続を初期化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadEmojiMap();
             initializeWebSocket();
         });
 

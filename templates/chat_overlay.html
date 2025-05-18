@@ -92,6 +92,11 @@
             color: #d32f2f;
             margin-top: 5px;
         }
+        .emoji {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -103,6 +108,28 @@
         const MESSAGE_LIFETIME = 10000;  // メッセージの表示時間（ミリ秒）
         const chatContainer = document.getElementById('chat-container');
         let selectedMessageElement = null;
+        let emojiMap = {};
+
+        async function loadEmojiMap() {
+            try {
+                const res = await fetch('/templates/emoji_map.json');
+                if (res.ok) {
+                    emojiMap = await res.json();
+                }
+            } catch (e) {
+                console.error('emoji_map.json の読み込みに失敗しました', e);
+            }
+        }
+
+        function replaceEmojis(text) {
+            return text.replace(/:[^:\s]+:/g, match => {
+                const path = emojiMap[match];
+                if (path) {
+                    return `<img src="/templates/${path}" class="emoji">`;
+                }
+                return match;
+            });
+        }
         
         // サーバーのホストアドレスを取得
         async function getServerHost() {
@@ -229,7 +256,7 @@
                          alt="${escapeHtml(author)}">
                     <div class="message-content">
                         <div class="author">${escapeHtml(author)}</div>
-                        <div class="text">${escapeHtml(text)}</div>
+                        <div class="text">${replaceEmojis(escapeHtml(text))}</div>
                         ${superchatHtml}
                     </div>
                 `;
@@ -286,7 +313,8 @@
         }
 
         // URLパラメータでテストボタンの表示/非表示を切り替え
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', async function() {
+            await loadEmojiMap();
             const params = new URLSearchParams(window.location.search);
             if (params.get('test') === '1') {
                 document.getElementById('testSuperchatBtn').style.display = '';
