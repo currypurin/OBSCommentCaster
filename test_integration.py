@@ -1,6 +1,5 @@
 import os
 import asyncio
-import time
 from dotenv import load_dotenv
 from googleapiclient.discovery import build
 from youtube_utils import YouTubeAPI
@@ -60,7 +59,7 @@ async def test_youtube_integration():
                     print(json.dumps(messages[0], indent=2, ensure_ascii=False))
                 else:
                     print("現在メッセージはありません")
-                time.sleep(3)  # 3秒待機
+                await asyncio.sleep(3)  # 3秒待機
         else:
             print("! ライブチャットIDの取得に失敗しました")
 
