@@ -109,6 +109,7 @@
         const chatContainer = document.getElementById('chat-container');
         let selectedMessageElement = null;
         let emojiMap = {};
+        let isMessagesEnabled = true;
 
         async function loadEmojiMap() {
             try {
@@ -161,7 +162,26 @@
                             }
                         } else if (message.type === 'chat') {
                             console.log('通常のチャットメッセージを表示:', message);
-                            addChatMessage(message, false);
+                            if (isMessagesEnabled) {
+                                addChatMessage(message, false);
+                            } else {
+                                console.log('メッセージ表示が無効のため、メッセージをスキップしました');
+                            }
+                        } else if (message.type === 'toggle_messages') {
+                            console.log('メッセージ表示の切り替え:', message.enabled);
+                            isMessagesEnabled = message.enabled;
+                            if (!isMessagesEnabled) {
+                                // 無効にした時は既存の通常メッセージを削除（選択されたメッセージは残す）
+                                const normalMessages = Array.from(chatContainer.children).filter(msg => 
+                                    !msg.classList.contains('selected')
+                                );
+                                normalMessages.forEach(msg => {
+                                    msg.classList.add('fade-out');
+                                    setTimeout(() => {
+                                        msg.remove();
+                                    }, 300);
+                                });
+                            }
                         }
                     } catch (error) {
                         console.error('メッセージの処理中にエラーが発生しました:', error);

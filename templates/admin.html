@@ -110,6 +110,7 @@
     <div class="input-group">
         <h2>コメント一覧</h2>
         <div class="button-group">
+            <button id="toggleMessagesBtn" onclick="toggleMessageDisplay()">メッセージ表示: ON</button>
             <button class="secondary" onclick="clearDisplay()">表示を消去</button>
         </div>
         <div id="commentList"></div>
@@ -137,6 +138,7 @@
         let selectedMessageId = null;
         let ws = null;
         let emojiMap = {};
+        let isMessagesEnabled = true;
 
         async function loadEmojiMap() {
             try {
@@ -408,6 +410,29 @@
                 status.textContent = '通信エラー';
                 status.style.color = 'red';
             }
+        }
+
+        function toggleMessageDisplay() {
+            if (!ws) return;
+            
+            isMessagesEnabled = !isMessagesEnabled;
+            const button = document.getElementById('toggleMessagesBtn');
+            
+            if (isMessagesEnabled) {
+                button.textContent = 'メッセージ表示: ON';
+                button.style.backgroundColor = '#4CAF50';
+                console.log('メッセージ表示を有効にしました');
+            } else {
+                button.textContent = 'メッセージ表示: OFF';
+                button.style.backgroundColor = '#f44336';
+                console.log('メッセージ表示を無効にしました');
+            }
+            
+            // オーバーレイに制御メッセージを送信
+            ws.send(JSON.stringify({
+                type: 'toggle_messages',
+                enabled: isMessagesEnabled
+            }));
         }
     </script>
 </body>
