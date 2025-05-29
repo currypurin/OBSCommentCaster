@@ -192,6 +192,11 @@ async def websocket_admin_endpoint(websocket: WebSocket):
                     "type": "selected_comment",
                     "comment": manager.selected_comment
                 }))
+            elif message.get("type") == "toggle_messages":
+                await manager.broadcast_to_displays(json.dumps({
+                    "type": "toggle_messages",
+                    "enabled": message.get("enabled")
+                }))
     except WebSocketDisconnect:
         manager.disconnect(websocket, "admin")
 
