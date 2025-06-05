@@ -111,6 +111,7 @@
         <h2>コメント一覧</h2>
         <div class="button-group">
             <button id="toggleMessagesBtn" onclick="toggleMessageDisplay()">メッセージ表示: ON</button>
+            <button id="toggleSoundBtn" onclick="toggleSound()">音声通知: ON</button>
             <button class="secondary" onclick="clearDisplay()">表示を消去</button>
         </div>
         <div id="commentList"></div>
@@ -138,7 +139,9 @@
         let selectedMessageId = null;
         let ws = null;
         let emojiMap = {};
-        let isMessagesEnabled = true;
+        let isMessagesEnabled = false;
+        let isSoundEnabled = true;
+        let notificationAudio = null;
 
         async function loadEmojiMap() {
             try {
@@ -240,6 +243,13 @@
                 const message = JSON.parse(event.data);
                 if (message.type === 'new_comment') {
                     addCommentToList(message.comment);
+                    // 音声通知を再生
+                    if (message.play_sound && isSoundEnabled && notificationAudio) {
+                        notificationAudio.currentTime = 0;
+                        notificationAudio.play().catch(e => {
+                            console.error('音声再生に失敗しました:', e);
+                        });
+                    }
                 }
             };
         }
@@ -310,7 +320,17 @@
         document.addEventListener('DOMContentLoaded', async function() {
             await loadEmojiMap();
             initializeWebSocket();
+            initializeAudio();
         });
+
+        function initializeAudio() {
+            try {
+                notificationAudio = new Audio('/templates/sounds/notification.wav');
+                notificationAudio.volume = 0.5;
+            } catch (e) {
+                console.error('音声ファイルの読み込みに失敗しました:', e);
+            }
+        }
 
         function editComment(index) {
             const comment = comments[index];
@@ -432,6 +452,29 @@
             ws.send(JSON.stringify({
                 type: 'toggle_messages',
                 enabled: isMessagesEnabled
+            }));
+        }
+
+        function toggleSound() {
+            if (!ws) return;
+            
+            isSoundEnabled = !isSoundEnabled;
+            const button = document.getElementById('toggleSoundBtn');
+            
+            if (isSoundEnabled) {
+                button.textContent = '音声通知: ON';
+                button.style.backgroundColor = '#4CAF50';
+                console.log('音声通知を有効にしました');
+            } else {
+                button.textContent = '音声通知: OFF';
+                button.style.backgroundColor = '#f44336';
+                console.log('音声通知を無効にしました');
+            }
+            
+            // サーバーに音声設定を送信
+            ws.send(JSON.stringify({
+                type: 'toggle_sound',
+                enabled: isSoundEnabled
             }));
         }
     </script>
