@@ -114,7 +114,9 @@ class ConnectionManager:
                             "author": message.get('author', ''),
                             "text": message.get('text', ''),
                             "timestamp": message.get('timestamp', ''),
-                            "author_icon": message.get('author_icon', '')
+                            "author_icon": message.get('author_icon', ''),
+                            "message_type": message.get('type', 'chat'),
+                            "superchat": message.get('superchat')
                         }))
                         # 管理画面にも送信（音声通知付き）
                         await self.broadcast_to_admins(json.dumps({
@@ -124,7 +126,9 @@ class ConnectionManager:
                                 "text": message.get('text', ''),
                                 "timestamp": message.get('timestamp', ''),
                                 "message_id": message.get('message_id', ''),
-                                "author_icon": message.get('author_icon', '')
+                                "author_icon": message.get('author_icon', ''),
+                                "type": message.get('type', 'chat'),
+                                "superchat": message.get('superchat')
                             },
                             "play_sound": self.sound_enabled
                         }))
