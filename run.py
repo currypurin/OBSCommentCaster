@@ -24,6 +24,11 @@ def main():
 
     # サーバーを起動
     print("FastAPIサーバーを起動します...")
+    print("\n=== アクセスURL ===")
+    print("管理画面: http://localhost:8000/admin")
+    print("オーバーレイ: http://localhost:8000/")
+    print("==================\n")
+    
     uvicorn.run(
         "server:app",
         host="0.0.0.0",
