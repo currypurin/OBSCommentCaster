@@ -24,6 +24,7 @@ build/
 *.swp
 *.swo
 .DS_Store
+.claude/
 
 # Environment variables
 .env
