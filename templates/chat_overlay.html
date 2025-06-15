@@ -252,7 +252,9 @@
             try {
                 const messageElement = document.createElement('div');
                 let className = 'chat-message' + (isSelected ? ' selected' : '');
-                if (message.type === 'superchat') {
+                // Check both 'type' (from admin panel) and 'message_type' (from live messages)
+                const messageType = message.type || message.message_type;
+                if (messageType === 'superchat') {
                     className += ' superchat';
                 }
                 messageElement.className = className;
@@ -265,7 +267,7 @@
                 const text = message.text || '';
                 
                 let superchatHtml = '';
-                if (message.type === 'superchat' && message.superchat) {
+                if (messageType === 'superchat' && message.superchat) {
                     if (message.superchat.superChatAmountDisplayString) {
                         superchatHtml += `<div class="superchat-amount">${escapeHtml(message.superchat.superChatAmountDisplayString)}</div>`;
                     }
