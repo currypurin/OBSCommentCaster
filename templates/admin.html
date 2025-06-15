@@ -28,6 +28,22 @@
         button:hover {
             background-color: #45a049;
         }
+        
+        button.toggle-on {
+            background-color: #4CAF50;
+        }
+        
+        button.toggle-on:hover {
+            background-color: #45a049;
+        }
+        
+        button.toggle-off {
+            background-color: #f44336;
+        }
+        
+        button.toggle-off:hover {
+            background-color: #d32f2f;
+        }
 
         #commentList {
             margin-top: 20px;
@@ -110,8 +126,8 @@
     <div class="input-group">
         <h2>コメント一覧</h2>
         <div class="button-group">
-            <button id="toggleMessagesBtn" onclick="toggleMessageDisplay()">メッセージ表示: ON</button>
-            <button id="toggleSoundBtn" onclick="toggleSound()">音声通知: ON</button>
+            <button id="toggleMessagesBtn" class="toggle-on" onclick="toggleMessageDisplay()">メッセージ表示: ON</button>
+            <button id="toggleSoundBtn" class="toggle-on" onclick="toggleSound()">音声通知: ON</button>
             <button class="secondary" onclick="clearDisplay()">表示を消去</button>
         </div>
         <div id="commentList"></div>
@@ -139,7 +155,7 @@
         let selectedMessageId = null;
         let ws = null;
         let emojiMap = {};
-        let isMessagesEnabled = false;
+        let isMessagesEnabled = true;
         let isSoundEnabled = true;
         let notificationAudio = null;
 
@@ -326,7 +342,7 @@
         function initializeAudio() {
             try {
                 notificationAudio = new Audio('/templates/sounds/stardust_notify.wav');
-                notificationAudio.volume = 0.5;
+                notificationAudio.volume = 0.15;
             } catch (e) {
                 console.error('音声ファイルの読み込みに失敗しました:', e);
             }
@@ -440,11 +456,13 @@
             
             if (isMessagesEnabled) {
                 button.textContent = 'メッセージ表示: ON';
-                button.style.backgroundColor = '#4CAF50';
+                button.className = 'toggle-on';
+                button.style.backgroundColor = '';
                 console.log('メッセージ表示を有効にしました');
             } else {
                 button.textContent = 'メッセージ表示: OFF';
-                button.style.backgroundColor = '#f44336';
+                button.className = 'toggle-off';
+                button.style.backgroundColor = '';
                 console.log('メッセージ表示を無効にしました');
             }
             
@@ -463,11 +481,13 @@
             
             if (isSoundEnabled) {
                 button.textContent = '音声通知: ON';
-                button.style.backgroundColor = '#4CAF50';
+                button.className = 'toggle-on';
+                button.style.backgroundColor = '';
                 console.log('音声通知を有効にしました');
             } else {
                 button.textContent = '音声通知: OFF';
-                button.style.backgroundColor = '#f44336';
+                button.className = 'toggle-off';
+                button.style.backgroundColor = '';
                 console.log('音声通知を無効にしました');
             }
             
