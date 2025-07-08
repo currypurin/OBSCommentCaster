@@ -1,3 +1,8 @@
+# Node.js
+node_modules/
+package-lock.json
+package.json
+
 # Python virtual environment
 obs_comment_caster/
 venv/
@@ -19,6 +24,7 @@ build/
 *.swp
 *.swo
 .DS_Store
+.claude/
 
 # Environment variables
 .env

@@ -18,10 +18,17 @@ def main():
 
     print(f"SERVER_HOST: {server_host or '未設定'}")
     print(f"YOUTUBE_API_KEY: {'設定済み' if youtube_api_key else '未設定'}")
+    if youtube_api_key:
+        print(f"YOUTUBE_API_KEY: ***{youtube_api_key[-5:]}")
     print("==================\n")
-    print(youtube_api_key)
+
     # サーバーを起動
     print("FastAPIサーバーを起動します...")
+    print("\n=== アクセスURL ===")
+    print("管理画面: http://localhost:8000/admin")
+    print("オーバーレイ: http://localhost:8000/")
+    print("==================\n")
+    
     uvicorn.run(
         "server:app",
         host="0.0.0.0",

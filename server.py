@@ -38,6 +38,7 @@ class ConnectionManager:
         self.selected_comment = None
         self.comments = []  # 最新のコメントを保持するリスト
         self.fetch_task = None  # コメント取得タスクを保持する変数
+        self.sound_enabled = True  # 音声通知の有効/無効状態
 
         # YouTube API の初期化
         api_key = os.getenv("YOUTUBE_API_KEY")
@@ -113,9 +114,11 @@ class ConnectionManager:
                             "author": message.get('author', ''),
                             "text": message.get('text', ''),
                             "timestamp": message.get('timestamp', ''),
-                            "author_icon": message.get('author_icon', '')
+                            "author_icon": message.get('author_icon', ''),
+                            "message_type": message.get('type', 'chat'),
+                            "superchat": message.get('superchat')
                         }))
-                        # 管理画面にも送信
+                        # 管理画面にも送信（音声通知付き）
                         await self.broadcast_to_admins(json.dumps({
                             "type": "new_comment",
                             "comment": {
@@ -123,10 +126,13 @@ class ConnectionManager:
                                 "text": message.get('text', ''),
                                 "timestamp": message.get('timestamp', ''),
                                 "message_id": message.get('message_id', ''),
-                                "author_icon": message.get('author_icon', '')
-                            }
+                                "author_icon": message.get('author_icon', ''),
+                                "type": message.get('type', 'chat'),
+                                "superchat": message.get('superchat')
+                            },
+                            "play_sound": self.sound_enabled
                         }))
-            await asyncio.sleep(5)  # 5秒待機
+            await asyncio.sleep(app_config.MESSAGE_FETCH_INTERVAL)
 
     async def start_fetching_comments(self):
         """コメント取得タスクを開始"""
@@ -192,6 +198,14 @@ async def websocket_admin_endpoint(websocket: WebSocket):
                     "type": "selected_comment",
                     "comment": manager.selected_comment
                 }))
+            elif message.get("type") == "toggle_messages":
+                await manager.broadcast_to_displays(json.dumps({
+                    "type": "toggle_messages",
+                    "enabled": message.get("enabled")
+                }))
+            elif message.get("type") == "toggle_sound":
+                manager.sound_enabled = message.get("enabled", True)
+                print(f"音声通知: {'有効' if manager.sound_enabled else '無効'}")
     except WebSocketDisconnect:
         manager.disconnect(websocket, "admin")
 

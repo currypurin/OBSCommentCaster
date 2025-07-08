@@ -74,23 +74,167 @@
             to { opacity: 0; transform: translateY(-20px); }
         }
 
+        /* YouTube Super Chat Color Tiers */
         .superchat {
-            background: linear-gradient(90deg, #ff9800, #ffeb3b, #ff9800);
-            color: #222;
+            color: #fff;
             font-weight: bold;
-            border: 3px solid #ff9800;
             animation: superchat-pop 1s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .superchat-blue {
+            background: linear-gradient(90deg, #1e88e5, #42a5f5, #e3f2fd);
+            border: 3px solid #1565c0;
+            box-shadow: 0 0 20px 5px #1e88e588;
+        }
+        
+        .superchat-teal {
+            background: linear-gradient(90deg, #00acc1, #26c6da, #e0f2f1);
+            border: 3px solid #00838f;
+            box-shadow: 0 0 25px 8px #00acc188;
+        }
+        
+        .superchat-green {
+            background: linear-gradient(90deg, #43a047, #66bb6a, #e8f5e8);
+            border: 3px solid #2e7d32;
+            box-shadow: 0 0 25px 8px #43a04788;
+        }
+        
+        .superchat-yellow {
+            background: linear-gradient(90deg, #fbc02d, #ffeb3b, #fffde7);
+            border: 3px solid #f57f17;
+            box-shadow: 0 0 30px 10px #fbc02d88;
+            color: #222;
+        }
+        
+        .superchat-orange {
+            background: linear-gradient(90deg, #ff9800, #ffb74d, #fff3e0);
+            border: 3px solid #e65100;
             box-shadow: 0 0 30px 10px #ff980088;
+            color: #222;
+        }
+        
+        .superchat-red {
+            background: linear-gradient(90deg, #e53935, #ef5350, #ffebee);
+            border: 3px solid #c62828;
+            box-shadow: 0 0 35px 15px #e5393588;
+        }
+        
+        .superchat-pink {
+            background: linear-gradient(90deg, #e91e63, #ec407a, #fce4ec);
+            border: 3px solid #ad1457;
+            box-shadow: 0 0 35px 15px #e91e6388;
+        }
+        
+        .superchat-rainbow {
+            background: linear-gradient(90deg, #ff0000, #ff7f00, #ffff00, #00ff00, #0000ff, #4b0082, #9400d3);
+            border: 3px solid #ffd700;
+            box-shadow: 0 0 40px 20px #ffd70088;
+            animation: superchat-pop-rainbow 1.5s ease, rainbow-glow 2s infinite;
         }
         @keyframes superchat-pop {
             0% { transform: scale(0.8); opacity: 0.5; }
             60% { transform: scale(1.1); opacity: 1; }
             100% { transform: scale(1); }
         }
+        
+        @keyframes superchat-pop-rainbow {
+            0% { transform: scale(0.8) rotate(-5deg); opacity: 0.5; }
+            30% { transform: scale(1.2) rotate(2deg); opacity: 1; }
+            60% { transform: scale(1.1) rotate(-1deg); opacity: 1; }
+            100% { transform: scale(1) rotate(0deg); }
+        }
+        
+        @keyframes rainbow-glow {
+            0%, 100% { box-shadow: 0 0 40px 20px #ff000088; }
+            16% { box-shadow: 0 0 40px 20px #ff7f0088; }
+            33% { box-shadow: 0 0 40px 20px #ffff0088; }
+            50% { box-shadow: 0 0 40px 20px #00ff0088; }
+            66% { box-shadow: 0 0 40px 20px #0000ff88; }
+            83% { box-shadow: 0 0 40px 20px #9400d388; }
+        }
+        
+        /* Sparkle Effects */
+        .sparkles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        
+        .sparkle {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: #fff;
+            border-radius: 50%;
+            animation: sparkle-float 3s infinite linear;
+            opacity: 0;
+        }
+        
+        .sparkle::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            right: -2px;
+            bottom: -2px;
+            background: radial-gradient(circle, transparent 40%, rgba(255,255,255,0.3) 70%);
+            border-radius: 50%;
+        }
+        
+        .star {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            background: #ffd700;
+            clip-path: polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+            animation: star-twinkle 2s infinite;
+            opacity: 0;
+        }
+        
+        @keyframes sparkle-float {
+            0% { 
+                opacity: 0;
+                transform: translateY(20px) scale(0);
+            }
+            10% {
+                opacity: 1;
+                transform: translateY(15px) scale(1);
+            }
+            90% {
+                opacity: 1;
+                transform: translateY(-15px) scale(1);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px) scale(0);
+            }
+        }
+        
+        @keyframes star-twinkle {
+            0%, 100% { 
+                opacity: 0;
+                transform: scale(0) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1) rotate(180deg);
+            }
+        }
         .superchat-amount {
             font-size: 1.5em;
             color: #d32f2f;
             margin-top: 5px;
+        }
+        .emoji {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -103,6 +247,29 @@
         const MESSAGE_LIFETIME = 10000;  // メッセージの表示時間（ミリ秒）
         const chatContainer = document.getElementById('chat-container');
         let selectedMessageElement = null;
+        let emojiMap = {};
+        let isMessagesEnabled = true;
+
+        async function loadEmojiMap() {
+            try {
+                const res = await fetch('/templates/emoji_map.json');
+                if (res.ok) {
+                    emojiMap = await res.json();
+                }
+            } catch (e) {
+                console.error('emoji_map.json の読み込みに失敗しました', e);
+            }
+        }
+
+        function replaceEmojis(text) {
+            return text.replace(/:[^:\s]+:/g, match => {
+                const path = emojiMap[match];
+                if (path) {
+                    return `<img src="/templates/${path}" class="emoji">`;
+                }
+                return match;
+            });
+        }
         
         // サーバーのホストアドレスを取得
         async function getServerHost() {
@@ -125,7 +292,6 @@
                         console.log('パースされたメッセージ:', message);
                         console.log('メッセージの型:', message.type);
                         
-                        // 選択されたコメントのみを処理
                         if (message.type === 'selected_comment') {
                             console.log('選択されたコメントを表示:', message);
                             if (message.comment) {
@@ -133,8 +299,29 @@
                             } else {
                                 removeSelectedMessages();
                             }
+                        } else if (message.type === 'chat') {
+                            console.log('通常のチャットメッセージを表示:', message);
+                            if (isMessagesEnabled) {
+                                addChatMessage(message, false);
+                            } else {
+                                console.log('メッセージ表示が無効のため、メッセージをスキップしました');
+                            }
+                        } else if (message.type === 'toggle_messages') {
+                            console.log('メッセージ表示の切り替え:', message.enabled);
+                            isMessagesEnabled = message.enabled;
+                            if (!isMessagesEnabled) {
+                                // 無効にした時は既存の通常メッセージを削除（選択されたメッセージは残す）
+                                const normalMessages = Array.from(chatContainer.children).filter(msg => 
+                                    !msg.classList.contains('selected')
+                                );
+                                normalMessages.forEach(msg => {
+                                    msg.classList.add('fade-out');
+                                    setTimeout(() => {
+                                        msg.remove();
+                                    }, 300);
+                                });
+                            }
                         }
-                        // 通常のチャットメッセージは無視
                     } catch (error) {
                         console.error('メッセージの処理中にエラーが発生しました:', error);
                         console.error('問題のメッセージ:', event.data);
@@ -186,7 +373,6 @@
                 console.log('選択されたコメントを表示:', comment);
                 const messageElement = addChatMessage(comment, true);
                 if (messageElement) {
-                    messageElement.classList.add('selected');
                     console.log('選択されたコメントの表示完了');
                 } else {
                     console.error('選択されたコメントの表示に失敗しました');
@@ -205,8 +391,14 @@
             try {
                 const messageElement = document.createElement('div');
                 let className = 'chat-message' + (isSelected ? ' selected' : '');
-                if (message.type === 'superchat') {
+                // Check both 'type' (from admin panel) and 'message_type' (from live messages)
+                const messageType = message.type || message.message_type;
+                if (messageType === 'superchat') {
                     className += ' superchat';
+                    // Add tier-based styling
+                    // Pass the entire message for fallback parsing
+                    const tier = getSuperchatTier(message.superchat, message);
+                    className += ' ' + tier;
                 }
                 messageElement.className = className;
                 
@@ -218,10 +410,15 @@
                 const text = message.text || '';
                 
                 let superchatHtml = '';
-                if (message.type === 'superchat' && message.superchat) {
+                if (messageType === 'superchat' && message.superchat) {
                     if (message.superchat.superChatAmountDisplayString) {
                         superchatHtml += `<div class="superchat-amount">${escapeHtml(message.superchat.superChatAmountDisplayString)}</div>`;
                     }
+                }
+                
+                let sparklesHtml = '';
+                if (messageType === 'superchat') {
+                    sparklesHtml = '<div class="sparkles"></div>';
                 }
                 
                 messageElement.innerHTML = `
@@ -229,10 +426,16 @@
                          alt="${escapeHtml(author)}">
                     <div class="message-content">
                         <div class="author">${escapeHtml(author)}</div>
-                        <div class="text">${escapeHtml(text)}</div>
+                        <div class="text">${replaceEmojis(escapeHtml(text))}</div>
                         ${superchatHtml}
                     </div>
+                    ${sparklesHtml}
                 `;
+                
+                // Add sparkle effects for superchat
+                if (messageType === 'superchat') {
+                    addSparkleEffect(messageElement, message.superchat);
+                }
                 
                 console.log('生成されたHTML:', messageElement.outerHTML);
                 
@@ -284,9 +487,114 @@
             div.textContent = text;
             return div.innerHTML;
         }
+        
+        // Get superchat tier based on amount
+        function getSuperchatTier(superchat, message) {
+            console.log('getSuperchatTier called with superchat:', superchat, 'message:', message);
+            
+            let amountStr = '';
+            
+            // First try to get from superchat object
+            if (superchat && superchat.superChatAmountDisplayString) {
+                amountStr = superchat.superChatAmountDisplayString;
+                console.log('Amount from superchat object:', amountStr);
+            } else {
+                // Fallback: try to extract from message text
+                console.log('No superchat object, trying to extract from message text...');
+                if (message && message.text) {
+                    console.log('Message text:', message.text);
+                    const amountMatch = message.text.match(/¥([\d,]+)/);
+                    if (amountMatch) {
+                        amountStr = amountMatch[0];
+                        console.log('Extracted amount from message text:', amountStr);
+                    }
+                }
+            }
+            
+            if (!amountStr) {
+                console.log('No amount string found, defaulting to blue');
+                return 'superchat-blue';
+            }
+            
+            console.log('Processing amount string:', amountStr);
+            
+            // Handle different currency formats (¥, $, etc.)
+            let amount = 0;
+            if (amountStr.includes('¥')) {
+                amount = parseFloat(amountStr.replace(/[¥,]/g, ''));
+            } else if (amountStr.includes('$')) {
+                amount = parseFloat(amountStr.replace(/[$,]/g, '')) * 150; // Convert USD to JPY roughly
+            } else {
+                amount = parseFloat(amountStr.replace(/[^0-9.]/g, ''));
+            }
+            
+            console.log('Parsed amount:', amount);
+            
+            let tier;
+            if (amount >= 10000) tier = 'superchat-rainbow';
+            else if (amount >= 5000) tier = 'superchat-pink';
+            else if (amount >= 2000) tier = 'superchat-red';
+            else if (amount >= 1000) tier = 'superchat-orange';
+            else if (amount >= 500) tier = 'superchat-yellow';
+            else if (amount >= 200) tier = 'superchat-green';
+            else if (amount >= 100) tier = 'superchat-teal';
+            else tier = 'superchat-blue';
+            
+            console.log('Determined tier:', tier);
+            return tier;
+        }
+        
+        // Add sparkle effects
+        function addSparkleEffect(element, superchat) {
+            const sparklesContainer = element.querySelector('.sparkles');
+            if (!sparklesContainer) return;
+            
+            const tier = getSuperchatTier(superchat);
+            let sparkleCount = 3; // default
+            
+            // More sparkles for higher tiers
+            if (tier === 'superchat-rainbow') sparkleCount = 12;
+            else if (tier === 'superchat-pink') sparkleCount = 10;
+            else if (tier === 'superchat-red') sparkleCount = 8;
+            else if (tier === 'superchat-orange') sparkleCount = 6;
+            else if (tier === 'superchat-yellow') sparkleCount = 5;
+            else if (tier === 'superchat-green') sparkleCount = 4;
+            
+            for (let i = 0; i < sparkleCount; i++) {
+                setTimeout(() => {
+                    createSparkle(sparklesContainer, tier);
+                }, i * 200);
+            }
+        }
+        
+        function createSparkle(container, tier) {
+            const isstar = Math.random() > 0.7;
+            const sparkle = document.createElement('div');
+            sparkle.className = isstar ? 'star' : 'sparkle';
+            
+            // Random position
+            sparkle.style.left = Math.random() * 100 + '%';
+            sparkle.style.animationDelay = Math.random() * 2 + 's';
+            
+            // Different colors for different tiers
+            if (tier === 'superchat-rainbow') {
+                const colors = ['#ff0000', '#ff7f00', '#ffff00', '#00ff00', '#0000ff', '#9400d3'];
+                if (isstar) sparkle.style.background = colors[Math.floor(Math.random() * colors.length)];
+            }
+            
+            container.appendChild(sparkle);
+            
+            // Remove after animation
+            setTimeout(() => {
+                if (sparkle.parentNode) {
+                    sparkle.parentNode.removeChild(sparkle);
+                }
+            }, 3000);
+        }
 
         // URLパラメータでテストボタンの表示/非表示を切り替え
-        window.addEventListener('DOMContentLoaded', function() {
+        window.addEventListener('DOMContentLoaded', async function() {
+            await loadEmojiMap();
             const params = new URLSearchParams(window.location.search);
             if (params.get('test') === '1') {
                 document.getElementById('testSuperchatBtn').style.display = '';

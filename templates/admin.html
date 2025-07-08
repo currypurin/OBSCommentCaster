@@ -28,6 +28,22 @@
         button:hover {
             background-color: #45a049;
         }
+        
+        button.toggle-on {
+            background-color: #4CAF50;
+        }
+        
+        button.toggle-on:hover {
+            background-color: #45a049;
+        }
+        
+        button.toggle-off {
+            background-color: #f44336;
+        }
+        
+        button.toggle-off:hover {
+            background-color: #d32f2f;
+        }
 
         #commentList {
             margin-top: 20px;
@@ -97,6 +113,11 @@
         .button-group button.secondary:hover {
             background-color: #555;
         }
+        .emoji {
+            width: 32px;
+            height: 32px;
+            vertical-align: middle;
+        }
     </style>
 </head>
 <body>
@@ -105,6 +126,8 @@
     <div class="input-group">
         <h2>コメント一覧</h2>
         <div class="button-group">
+            <button id="toggleMessagesBtn" class="toggle-on" onclick="toggleMessageDisplay()">メッセージ表示: ON</button>
+            <button id="toggleSoundBtn" class="toggle-on" onclick="toggleSound()">音声通知: ON</button>
             <button class="secondary" onclick="clearDisplay()">表示を消去</button>
         </div>
         <div id="commentList"></div>
@@ -131,6 +154,31 @@
         let comments = [];
         let selectedMessageId = null;
         let ws = null;
+        let emojiMap = {};
+        let isMessagesEnabled = true;
+        let isSoundEnabled = true;
+        let notificationAudio = null;
+
+        async function loadEmojiMap() {
+            try {
+                const res = await fetch('/templates/emoji_map.json');
+                if (res.ok) {
+                    emojiMap = await res.json();
+                }
+            } catch (e) {
+                console.error('emoji_map.json の読み込みに失敗しました', e);
+            }
+        }
+
+        function replaceEmojis(text) {
+            return text.replace(/:[^:\s]+:/g, match => {
+                const path = emojiMap[match];
+                if (path) {
+                    return `<img src="/templates/${path}" class="emoji">`;
+                }
+                return match;
+            });
+        }
 
         // スタイルの設定（既存のstyle要素があれば削除）
         const existingStyle = document.getElementById('comment-styles');
@@ -197,6 +245,25 @@
             .text {
                 line-height: 1.4;
             }
+
+            .comment.superchat {
+                background: linear-gradient(90deg, #ff9800, #ffeb3b, #ff9800);
+                color: #222;
+                font-weight: bold;
+                border: 3px solid #ff9800;
+                box-shadow: 0 0 15px 5px #ff980044;
+            }
+
+            .comment.superchat .author {
+                color: #d32f2f;
+            }
+
+            .superchat-amount {
+                font-size: 1.2em;
+                color: #d32f2f;
+                font-weight: bold;
+                margin-top: 5px;
+            }
         `;
 
         document.head.appendChild(commentStyles);
@@ -211,6 +278,13 @@
                 const message = JSON.parse(event.data);
                 if (message.type === 'new_comment') {
                     addCommentToList(message.comment);
+                    // 音声通知を再生
+                    if (message.play_sound && isSoundEnabled && notificationAudio) {
+                        notificationAudio.currentTime = 0;
+                        notificationAudio.play().catch(e => {
+                            console.error('音声再生に失敗しました:', e);
+                        });
+                    }
                 }
             };
         }
@@ -221,7 +295,11 @@
             const commentList = document.getElementById('commentList');
             
             const commentElement = document.createElement('div');
-            commentElement.className = 'comment';
+            let className = 'comment';
+            if (comment.type === 'superchat') {
+                className += ' superchat';
+            }
+            commentElement.className = className;
             commentElement.setAttribute('data-message-id', comment.message_id);
             
             // 時刻のフォーマット
@@ -236,6 +314,11 @@
                 return `${hours}:${minutes}:${seconds} ${ampm}`;
             }
             
+            let superchatHtml = '';
+            if (comment.type === 'superchat' && comment.superchat && comment.superchat.superChatAmountDisplayString) {
+                superchatHtml = `<div class="superchat-amount">${escapeHtml(comment.superchat.superChatAmountDisplayString)}</div>`;
+            }
+            
             commentElement.innerHTML = `
                 <img src="${comment.author_icon}" class="author-icon" onerror="this.src='default_icon.png'">
                 <div class="comment-content">
@@ -243,7 +326,8 @@
                         <span class="author">${comment.author}:</span>
                         <span class="timestamp">${formatDateTime(comment.timestamp)}</span>
                     </div>
-                    <div class="text">${comment.text}</div>
+                    <div class="text">${replaceEmojis(escapeHtml(comment.text))}</div>
+                    ${superchatHtml}
                 </div>
             `;
             
@@ -278,9 +362,20 @@
         }
 
         // ページ読み込み完了時にWebSocket接続を初期化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadEmojiMap();
             initializeWebSocket();
+            initializeAudio();
         });
+
+        function initializeAudio() {
+            try {
+                notificationAudio = new Audio('/templates/sounds/stardust_notify.wav');
+                notificationAudio.volume = 0.15;
+            } catch (e) {
+                console.error('音声ファイルの読み込みに失敗しました:', e);
+            }
+        }
 
         function editComment(index) {
             const comment = comments[index];
@@ -380,6 +475,56 @@
                 status.textContent = '通信エラー';
                 status.style.color = 'red';
             }
+        }
+
+        function toggleMessageDisplay() {
+            if (!ws) return;
+            
+            isMessagesEnabled = !isMessagesEnabled;
+            const button = document.getElementById('toggleMessagesBtn');
+            
+            if (isMessagesEnabled) {
+                button.textContent = 'メッセージ表示: ON';
+                button.className = 'toggle-on';
+                button.style.backgroundColor = '';
+                console.log('メッセージ表示を有効にしました');
+            } else {
+                button.textContent = 'メッセージ表示: OFF';
+                button.className = 'toggle-off';
+                button.style.backgroundColor = '';
+                console.log('メッセージ表示を無効にしました');
+            }
+            
+            // オーバーレイに制御メッセージを送信
+            ws.send(JSON.stringify({
+                type: 'toggle_messages',
+                enabled: isMessagesEnabled
+            }));
+        }
+
+        function toggleSound() {
+            if (!ws) return;
+            
+            isSoundEnabled = !isSoundEnabled;
+            const button = document.getElementById('toggleSoundBtn');
+            
+            if (isSoundEnabled) {
+                button.textContent = '音声通知: ON';
+                button.className = 'toggle-on';
+                button.style.backgroundColor = '';
+                console.log('音声通知を有効にしました');
+            } else {
+                button.textContent = '音声通知: OFF';
+                button.className = 'toggle-off';
+                button.style.backgroundColor = '';
+                console.log('音声通知を無効にしました');
+            }
+            
+            // サーバーに音声設定を送信
+            ws.send(JSON.stringify({
+                type: 'toggle_sound',
+                enabled: isSoundEnabled
+            }));
         }
     </script>
 </body>
