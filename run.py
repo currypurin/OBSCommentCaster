@@ -5,6 +5,10 @@ FastAPIサーバーの起動スクリプト
 from dotenv import load_dotenv
 import uvicorn
 import os
+import logging
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 def main():
@@ -12,22 +16,22 @@ def main():
     load_dotenv()
 
     # 重要な環境変数が設定されているか確認
-    print("\n=== 環境変数の確認 ===")
+    logger.info("=== 環境変数の確認 ===")
     server_host = os.getenv('SERVER_HOST')
     youtube_api_key = os.getenv('YOUTUBE_API_KEY')
 
-    print(f"SERVER_HOST: {server_host or '未設定'}")
-    print(f"YOUTUBE_API_KEY: {'設定済み' if youtube_api_key else '未設定'}")
+    logger.info(f"SERVER_HOST: {server_host or '未設定'}")
+    logger.info(f"YOUTUBE_API_KEY: {'設定済み' if youtube_api_key else '未設定'}")
     if youtube_api_key:
-        print(f"YOUTUBE_API_KEY: ***{youtube_api_key[-5:]}")
-    print("==================\n")
+        logger.info(f"YOUTUBE_API_KEY: ***{youtube_api_key[-5:]}")
+    logger.info("==================")
 
     # サーバーを起動
-    print("FastAPIサーバーを起動します...")
-    print("\n=== アクセスURL ===")
-    print("管理画面: http://localhost:8000/admin")
-    print("オーバーレイ: http://localhost:8000/")
-    print("==================\n")
+    logger.info("FastAPIサーバーを起動します...")
+    logger.info("=== アクセスURL ===")
+    logger.info("管理画面: http://localhost:8000/admin")
+    logger.info("オーバーレイ: http://localhost:8000/")
+    logger.info("==================")
     
     uvicorn.run(
         "server:app",

@@ -5,6 +5,7 @@ from typing import List, Dict, Optional
 import json
 import asyncio
 import os
+import logging
 from dotenv import load_dotenv
 from youtube_utils import YouTubeAPI
 from googleapiclient.discovery import build
@@ -16,6 +17,9 @@ from pydantic import BaseModel  # 追加
 
 # 環境変数の読み込み
 load_dotenv()
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -72,10 +76,10 @@ class ConnectionManager:
                     base64_image = base64.b64encode(image_data).decode('utf-8')
                     return f"data:image/jpeg;base64,{base64_image}"
                 else:
-                    print(f"画像の取得に失敗: {response.status}")
+                    logger.warning(f"画像の取得に失敗: {response.status}")
                     return None
         except Exception as e:
-            print(f"画像の取得中にエラー: {e}")
+            logger.error(f"画像の取得中にエラー: {e}")
             return None
 
     async def connect(self, websocket: WebSocket, client_type: str):
@@ -88,12 +92,12 @@ class ConnectionManager:
         # print(f"{client_type} connection closed. Remaining {client_type} connections: {len(self.active_connections[client_type])}")
 
     async def broadcast_to_displays(self, message: str):
-        print(f"Broadcasting to {len(self.active_connections['display'])} display clients")
+        logger.debug(f"Broadcasting to {len(self.active_connections['display'])} display clients")
         for connection in self.active_connections["display"]:
             await connection.send_text(message)
 
     async def broadcast_to_admins(self, message: str):
-        print(f"Broadcasting to {len(self.active_connections['admin'])} admin clients")
+        logger.debug(f"Broadcasting to {len(self.active_connections['admin'])} admin clients")
         for connection in self.active_connections["admin"]:
             await connection.send_text(message)
 
@@ -156,9 +160,9 @@ async def startup_event():
     await manager.start()  # aiohttp sessionの初期化
     # YouTube APIの初期化のみ行い、コメント取得は開始しない
     if manager.youtube_api:
-        print("YouTube API initialized")
+        logger.info("YouTube API initialized")
     else:
-        print("Warning: YouTube API is not configured")
+        logger.warning("YouTube API is not configured")
 
 
 @app.on_event("shutdown")
@@ -205,7 +209,7 @@ async def websocket_admin_endpoint(websocket: WebSocket):
                 }))
             elif message.get("type") == "toggle_sound":
                 manager.sound_enabled = message.get("enabled", True)
-                print(f"音声通知: {'有効' if manager.sound_enabled else '無効'}")
+                logger.info(f"音声通知: {'有効' if manager.sound_enabled else '無効'}")
     except WebSocketDisconnect:
         manager.disconnect(websocket, "admin")
 
@@ -242,7 +246,7 @@ def extract_video_id_from_url(live_url: str) -> Optional[str]:
         if parsed_url.hostname == "youtu.be":
             return parsed_url.path.lstrip("/")
     except Exception as e:
-        print(f"URLからvideo_id抽出失敗: {e}")
+        logger.error(f"URLからvideo_id抽出失敗: {e}")
     return None
 
 

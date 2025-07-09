@@ -4,10 +4,48 @@ YouTubeAPIの設定ファイル
 from dataclasses import dataclass
 from os import getenv
 from dotenv import load_dotenv
+import logging
+import sys
 
 
 # 環境変数の読み込み
 load_dotenv()
+
+
+def setup_logging():
+    """ログ設定の初期化"""
+    # ログレベルの設定（環境変数で制御可能）
+    log_level = getenv('LOG_LEVEL', 'INFO').upper()
+    
+    # ログフォーマットの設定
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    
+    # ルートロガーの設定
+    root_logger = logging.getLogger()
+    root_logger.setLevel(getattr(logging, log_level, logging.INFO))
+    
+    # 既存のハンドラーをクリア
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+    
+    # コンソールハンドラーの設定
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(getattr(logging, log_level, logging.INFO))
+    console_handler.setFormatter(formatter)
+    root_logger.addHandler(console_handler)
+    
+    # uvicornのログレベルも調整
+    logging.getLogger("uvicorn").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    
+    return root_logger
+
+
+# ログ設定の初期化
+setup_logging()
 
 
 # 環境変数から取得する設定

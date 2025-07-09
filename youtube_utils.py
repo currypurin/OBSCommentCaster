@@ -2,6 +2,10 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 from googleapiclient.errors import HttpError
 from config import app_config
+import logging
+
+# ロガーの設定
+logger = logging.getLogger(__name__)
 
 
 class YouTubeAPI:
@@ -19,14 +23,14 @@ class YouTubeAPI:
         """クォータ使用量を追跡"""
         now = datetime.now()
         if (now - self.quota_reset_time).days >= 1:
-            print("クォータ使用量リセット（前回: {}ユニット）".format(self.daily_quota_used))
+            logger.info("クォータ使用量リセット（前回: {}ユニット）".format(self.daily_quota_used))
             self.daily_quota_used = 0
             self.quota_reset_time = now
 
         self.daily_quota_used += units
 
         if self.daily_quota_used % 1000 == 0:
-            print(f"現在のクォータ使用量: {self.daily_quota_used}ユニット")
+            logger.info(f"現在のクォータ使用量: {self.daily_quota_used}ユニット")
 
     def get_live_chat_id(self, channel_id: Optional[str] = None, video_id: Optional[str] = None) -> Optional[str]:
         """ライブチャットIDを取得"""
@@ -64,7 +68,7 @@ class YouTubeAPI:
 
         except HttpError as e:
             if e.resp.status == 403:
-                print("クォータ制限に達した可能性があります")
+                logger.error("クォータ制限に達した可能性があります")
             return None
 
     def get_live_chat_messages(self) -> List[Dict]:
@@ -124,7 +128,7 @@ class YouTubeAPI:
 
         except HttpError as e:
             if e.resp.status == 403:
-                print("クォータ制限に達した可能性があります")
+                logger.error("クォータ制限に達した可能性があります")
             return []
 
     def set_live_chat_id(self, chat_id: str):
