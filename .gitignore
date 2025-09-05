@@ -37,3 +37,5 @@ build/
 token.pickle
 client_secret*.json
 credentials*.json 
+.gemini/
+gha-creds-*.json
